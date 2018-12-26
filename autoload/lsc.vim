@@ -33,7 +33,7 @@ function! s:server_launch(buf) abort
     let l:server = lsc#client#launch(
                 \ l:server_command.command,
                 \ get(l:server_command, 'initialization_options', {}),
-                \ get(l:server_command, 'workspace_config', {}),
+                \ get(l:server_command, 'workspace_settings', {}),
                 \ getcwd(),
                 \ a:buf)
     if type(l:server) == v:t_dict
