@@ -50,17 +50,7 @@ function s:client.on_stdout(job_id, data, event)
         endif
 
         let l:response = json_decode(l:ctx['data'][l:ctx['header_length'] : l:ctx['length'] - 1])
-        call lsc#log#verbose(l:response)
-        let l:method = get(l:response, 'method')
-        let l:idx = get(l:response, 'id')
-
-        if has_key(self._notification_hooks, l:method)
-            call self._notification_hooks[l:method](l:response)
-        elseif has_key(self._request_hooks, l:idx)
-            call self._request_hooks[l:idx](l:response)
-            call remove(self._request_hooks, l:idx)
-        endif
-
+        call self.response_handler(l:response)
         let l:ctx['data'] = l:ctx['data'][l:ctx['length'] :]
         let l:ctx['length'] = -1
         let l:ctx['header_length'] = -1
@@ -73,6 +63,19 @@ endfunction
 
 function s:client.on_exit(job_id, data, event)
     call lsc#log#log([a:data, a:event])
+endfunction
+
+function s:client.response_handler(response)
+    call lsc#log#verbose(a:response)
+    let l:request_method = get(a:response, 'method')
+    let l:request_id = get(a:response, 'id')
+
+    if has_key(self._notification_hooks, l:request_method)
+        call self._notification_hooks[l:request_method](a:response)
+    elseif has_key(self._request_hooks, l:request_id)
+        call self._request_hooks[l:request_id](a:response)
+        call remove(self._request_hooks, l:request_id)
+    endif
 endfunction
 
 function! s:client.send_notification(method, params)
@@ -103,7 +106,7 @@ function! s:client.send_request(method, params, ...)
     let l:data = 'Content-Length: ' . string(strlen(l:content)) . "\r\n\r\n" . l:content
 
     if a:0 > 0 && type(a:1) == v:t_func
-        let self._request_hooks[self._context.request_id] = a:1
+        let self._request_hooks[l:request.id] = a:1
     endif
     let self._context.request_id += 1
 
@@ -245,19 +248,19 @@ function s:client.launch(command)
         return 0
     endif
 
-    call l:client.register_notification_hook('textDocument/publishDiagnostics', function('s:handle_textDocument_publishDiagnostics', [l:client]))
+    call l:client.register_notification_hook('textDocument/publishDiagnostics', {notification -> self.handle_textDocument_publishDiagnostics(notification)})
 
     return l:client
 endfunction
 
-function! s:handle_initialize(client, settings, buf, response)
-    call extend(a:client, a:response.result)
-    call a:client.send_notification('initialized', {})
-    let a:client._context.initialized = 1
+function! s:client.handle_initialize(settings, buf, response)
+    call extend(self, a:response.result)
+    call self.send_notification('initialized', {})
+    let self._context.initialized = 1
     if !empty(a:settings)
-        call a:client.send_notification('workspace/didChangeConfiguration', {'settings': a:settings})
+        call self.send_notification('workspace/didChangeConfiguration', {'settings': a:settings})
     endif
-    call a:client.textDocument_didOpen(a:buf)
+    call self.textDocument_didOpen(a:buf)
 endfunction
 
 function!  s:client.initialize(root_dir, init_opts, settings, buf)
@@ -271,18 +274,18 @@ function!  s:client.initialize(root_dir, init_opts, settings, buf)
                 \ },
                 \ 'trace': 'off'
                 \ }
-    call self.send_request('initialize', l:params, function('s:handle_initialize', [self, a:settings, a:buf]))
+    call self.send_request('initialize', l:params, {response -> self.handle_initialize(a:settings, a:buf, response)})
 endfunction
 
-function! s:handle_shutdown(client, response)
-    let a:client._context.initialized = 0
+function! s:client.handle_shutdown(response)
+    let self._context.initialized = 0
 endfunction
 
 function! s:client.shutdown()
     if !self.initialized()
         return
     endif
-    call self.send_request('shutdown', {}, function('s:handle_shutdown', [self]))
+    call self.send_request('shutdown', {}, {response -> self.handle_shutdown(response)})
 endfunction
 
 function! s:client.exit()
@@ -299,16 +302,17 @@ function! s:client.cancelRequest(id)
     call self.send_notification('$/cancelRequest', {'id': a:id})
 endfunction
 
-function! s:handle_textDocument_publishDiagnostics(client, notification)
+function! s:client.handle_textDocument_publishDiagnostics(notification)
     let l:params = get(a:notification, 'params', {})
-    if !empty(l:params.diagnostics)
-        call extend(a:client._context.diagnostics, {l:params['uri']: l:params['diagnostics']})
+    if empty(l:params.diagnostics)
+        return
     endif
+    call extend(self._context.diagnostics, {l:params['uri']: l:params['diagnostics']})
 endfunction
 " }}}
 
 " languageFeatures {{{
-function! s:handle_code_lens(client, response) abort
+function! s:client.handle_code_lens(buf, response) abort
     let l:codelenses = a:response.result
 
     let l:dict = {}
@@ -321,7 +325,7 @@ function! s:handle_code_lens(client, response) abort
     for [l:line, l:codelens] in items(l:dict)
         call sort(l:codelens, {x, y -> x['range']['start']['character'] - y['range']['start']['character']})
         call map(l:codelens, {_, x -> x['command']['title']})
-        call nvim_buf_set_virtual_text(0, 1025, str2nr(l:line), [['| ' . join(l:codelens, ' | ') . ' |', 'Comment']], {})
+        call nvim_buf_set_virtual_text(a:buf, 1025, str2nr(l:line), [['| ' . join(l:codelens, ' | ') . ' |', 'Comment']], {})
     endfor
 endfunction
 
@@ -337,7 +341,7 @@ function! s:client.textDocument_codeLens(buf) abort
     let l:params = {
                 \ 'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
                 \ }
-    call self.send_request('textDocument/codeLens', l:params, function('s:handle_code_lens', [self]))
+    call self.send_request('textDocument/codeLens', l:params, {response -> self.handle_code_lens(a:buf, response)})
 endfunction
 " }}}
 
