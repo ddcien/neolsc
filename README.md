@@ -19,7 +19,7 @@
  - [ ]: C->S : 'workspace/didChangeConfiguration'
  - [ ]: C->S : 'workspace/didChangeWatchedFiles'
  - [ ]: C->S : 'workspace/didChangeWorkspaceFolders'
- 
+
  - [ ]: S->C->S : 'client/registerCapability'
  - [ ]: S->C->S : 'client/unregisterCapability'
  - [ ]: S->C->S : 'window/showMessageRequest'
