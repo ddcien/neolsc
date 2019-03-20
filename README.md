@@ -2,58 +2,78 @@
 
 ## Tasks
 
- - [ ]: S->C : '$/cancelRequest'
- - [ ]: S->C : 'telemetry/event'
- - [x]: S->C : 'textDocument/publishDiagnostics'
- - [ ]: S->C : 'window/logMessage'
- - [ ]: S->C : 'window/showMessage'
+### General
 
- - [ ]: C->S : 'cancelRequest'
- - [x]: C->S : 'exit'
- - [x]: C->S : 'initialized'
- - [x]: C->S : 'textDocument/didChange'
- - [x]: C->S : 'textDocument/didClose'
- - [x]: C->S : 'textDocument/didOpen'
- - [x]: C->S : 'textDocument/didSave'
- - [ ]: C->S : 'textDocument/willSave'
- - [ ]: C->S : 'workspace/didChangeConfiguration'
- - [ ]: C->S : 'workspace/didChangeWatchedFiles'
- - [ ]: C->S : 'workspace/didChangeWorkspaceFolders'
+ - [x]: C->S->C : 'initialize'
+ - [x]: C->S    : 'initialized'
+ - [x]: C->S->C : 'shutdown'
+ - [x]: C->S    : 'exit'
+ - [ ]: S->C    : '$/cancelRequest'
+ - [ ]: C->S    : '$/cancelRequest'
+
+### Window
+
+ - [ ]: S->C    : 'window/logMessage'
+ - [ ]: S->C    : 'window/showMessage'
+ - [ ]: S->C->S : 'window/showMessageRequest'
+
+### Telemetry
+
+ - [ ]: S->C : 'telemetry/event'
+
+### Client
 
  - [ ]: S->C->S : 'client/registerCapability'
  - [ ]: S->C->S : 'client/unregisterCapability'
- - [ ]: S->C->S : 'window/showMessageRequest'
- - [ ]: S->C->S : 'workspace/applyEdit'
- - [ ]: S->C->S : 'workspace/configuration'
- - [ ]: S->C->S : 'workspace/workspaceFolders'
 
- - [ ]: C->S->C : 'codeLens/resolve'
+### Workspace
+
+ - [ ]: S->C->S : 'workspace/workspaceFolders'
+ - [ ]: C->S    : 'workspace/didChangeWorkspaceFolders'
+ - [ ]: C->S    : 'workspace/didChangeConfiguration'
+ - [ ]: S->C->S : 'workspace/configuration'
+ - [ ]: C->S    : 'workspace/didChangeWatchedFiles'
+ - [x]: C->S->C : 'workspace/symbol'
+ - [ ]: C->S->C : 'workspace/executeCommand'
+ - [ ]: S->C->S : 'workspace/applyEdit'
+
+### TextSynchronization
+
+ - [x]: C->S    : 'textDocument/didOpen'
+ - [x]: C->S    : 'textDocument/didChange'
+ - [ ]: C->S    : 'textDocument/willSave'
+ - [ ]: C->S->C : 'textDocument/willSaveWaitUntil'
+ - [x]: C->S    : 'textDocument/didSave'
+ - [x]: C->S    : 'textDocument/didClose'
+
+### Diagnostics
+
+ - [x]: S->C : 'textDocument/publishDiagnostics'
+
+### Language Features
+
+ - [ ]: C->S->C : 'textDocument/completion'
  - [ ]: C->S->C : 'completionItem/resolve'
- - [ ]: C->S->C : 'documentLink/resolve'
- - [x]: C->S->C : 'initialize'
- - [x]: C->S->C : 'shutdown'
+ - [ ]: C->S->C : 'textDocument/hover'
+ - [ ]: C->S->C : 'textDocument/signatureHelp'
+ - [x]: C->S->C : 'textDocument/declaration'
+ - [x]: C->S->C : 'textDocument/definition'
+ - [x]: C->S->C : 'textDocument/typeDefinition'
+ - [ ]: C->S->C : 'textDocument/implementation'
+ - [x]: C->S->C : 'textDocument/references'
+ - [x]: C->S->C : 'textDocument/documentHighlight'
+ - [ ]: C->S->C : 'textDocument/documentSymbol'
  - [ ]: C->S->C : 'textDocument/codeAction'
  - [x]: C->S->C : 'textDocument/codeLens'
- - [ ]: C->S->C : 'textDocument/colorPresentation'
- - [ ]: C->S->C : 'textDocument/completion'
- - [ ]: C->S->C : 'textDocument/declaration'
- - [ ]: C->S->C : 'textDocument/definition'
- - [ ]: C->S->C : 'textDocument/documentColor'
- - [ ]: C->S->C : 'textDocument/documentHighlight'
+ - [ ]: C->S->C : 'codeLens/resolve'
  - [ ]: C->S->C : 'textDocument/documentLink'
- - [ ]: C->S->C : 'textDocument/documentSymbol'
- - [ ]: C->S->C : 'textDocument/foldingRange'
+ - [ ]: C->S->C : 'documentLink/resolve'
+ - [ ]: C->S->C : 'textDocument/documentColor'
+ - [ ]: C->S->C : 'textDocument/colorPresentation'
  - [ ]: C->S->C : 'textDocument/formatting'
- - [ ]: C->S->C : 'textDocument/hover'
- - [ ]: C->S->C : 'textDocument/implementation'
- - [ ]: C->S->C : 'textDocument/onTypeFormatting'
- - [ ]: C->S->C : 'textDocument/prepareRename'
  - [ ]: C->S->C : 'textDocument/rangeFormatting'
- - [ ]: C->S->C : 'textDocument/references'
+ - [ ]: C->S->C : 'textDocument/onTypeFormatting'
  - [ ]: C->S->C : 'textDocument/rename'
- - [ ]: C->S->C : 'textDocument/signatureHelp'
- - [ ]: C->S->C : 'textDocument/typeDefinition'
- - [ ]: C->S->C : 'textDocument/willSaveWaitUntil'
- - [ ]: C->S->C : 'workspace/executeCommand'
- - [ ]: C->S->C : 'workspace/symbol'
+ - [ ]: C->S->C : 'textDocument/prepareRename'
+ - [ ]: C->S->C : 'textDocument/foldingRange'
 
