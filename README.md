@@ -77,3 +77,16 @@
  - [ ]: C->S->C : 'textDocument/prepareRename'
  - [x]: C->S->C : 'textDocument/foldingRange'
 
+### BUG
+
+1. The preview window for hover information need to be discarded.
+
+### TODO
+
+1. Auto trigger completion, signatureHelp, and onTypeFormatting function.
+2. Use floating window for hover and some other information.
+3. Other ccls/cquery functions.
+4. Complete semantic coloring.
+5. Export commands and key bindings.
+6. Export custom settings.
+7. Finely control the requests.
