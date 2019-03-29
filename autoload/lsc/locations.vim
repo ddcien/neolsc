@@ -32,7 +32,7 @@ function! s:locations_to_qf_list(locations)
     let l:cache = {}
 
     for l:loc in a:locations
-        let l:path = resolve(lsc#uri#uri_to_path(l:loc.uri))
+        let l:path = lsc#uri#uri_to_path(l:loc.uri)
         let l:line = l:loc['range']['start']['line']
         let l:col = l:loc['range']['start']['character']
         let l:buf = bufnr(l:path)
@@ -76,12 +76,13 @@ function! lsc#locations#handle_locations(sort, jump_if_one, response)
         return
     endif
 
+    " TODO(Richard): Handle LocationLink
+    " Here the LocationLink instance degenerates to a Location instance
     if has_key(l:locations[0], 'targetUri')
-        " TODO: LocationLink
-        return
-    else
-        let l:loclist = s:locations_to_qf_list(l:locations)
+        call map(l:locations, {_, loc -> {'uri': loc['targetUri'], 'range': loc['targetSelectionRange']}})
     endif
+
+    let l:loclist = s:locations_to_qf_list(l:locations)
 
     if a:sort
         call sort(l:loclist, function('s:loc_compare_full'))

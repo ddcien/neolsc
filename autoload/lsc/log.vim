@@ -1,3 +1,4 @@
+" vim: set foldmethod=marker foldlevel=0 nomodeline:
 
 function! lsc#log#verbose(...) abort
     if g:lsc_log_verbose
@@ -7,6 +8,6 @@ endfunction
 
 function! lsc#log#log(...) abort
     if !empty(g:lsc_log_file)
-        call writefile([strftime('%c') . ':' . json_encode(a:000)], g:lsc_log_file, 'a')
+        call writefile([json_encode({'time':strftime('%c') ,'log':a:000})], g:lsc_log_file, 'a')
     endif
 endfunction

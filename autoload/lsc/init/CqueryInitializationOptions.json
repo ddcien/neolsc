@@ -1,0 +1,58 @@
+{
+  "projectRoot": "",
+  "compilationDatabaseCommand": "",
+  "compilationDatabaseDirectory": "",
+  "cacheDirectory": "",
+  "resourceDirectory": "",
+  "discoverSystemIncludes": true,
+  "extraClangArguments": [],
+  "progressReportFrequencyMs": 500,
+  "emitQueryDbBlocked": false,
+  "emitInactiveRegions": false,
+  "showDocumentLinksOnIncludes": true,
+  "codeLens": {
+    "localVariables": true
+  },
+  "completion": {
+    "enableSnippets": true,
+    "detailedLabel": false,
+    "dropOldRequests": true,
+    "filterAndSort": true,
+    "includeMaxPathSize": 64,
+    "includeSuffixWhitelist": [".h", ".hpp", ".hh"],
+    "includeBlacklist": [],
+    "includeWhitelist": []
+  },
+  "formatting": {
+    "enabled": true
+  },
+  "diagnostics": {
+    "blacklist": [],
+    "whitelist": [],
+    "frequencyMs": 0,
+    "onParse": true,
+    "onType": true
+  },
+  "highlight": {
+    "enabled": false,
+    "blacklist": [],
+    "whitelist": []
+  },
+  "index": {
+    "attributeMakeCallsToCtor": true,
+    "blacklist": [],
+    "whitelist": [],
+    "comments": 2,
+    "enabled": true,
+    "logSkippedPaths": false,
+    "threads": 0
+  },
+  "workspaceSymbol": {
+    "maxNum": 1000,
+    "sort": true
+  },
+  "enableIndexOnDidChange": false,
+  "xref": {
+    "maxNum": 2000
+  }
+}

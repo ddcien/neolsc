@@ -32,7 +32,7 @@ let s:symbol_kinds = {
 
 function! s:SymbolInformation_to_locinfo(sym)
     let l:loc = a:sym.location
-    let l:path = resolve(lsc#uri#uri_to_path(l:loc.uri))
+    let l:path = lsc#uri#uri_to_path(l:loc.uri)
     let l:line = l:loc['range']['start']['line']
     let l:col = l:loc['range']['start']['character']
     let l:text = ' ->: ' . get(s:symbol_kinds, a:sym.kind, 'Unknown[' . string(a:sym.kind) . ']') . ':' . get(a:sym, 'containerName', a:sym.name)

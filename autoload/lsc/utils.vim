@@ -1,4 +1,5 @@
-
+" vim: set foldmethod=marker foldlevel=0 nomodeline:
+" {{{
 function! lsc#utils#get_buffer_path(...) abort
     return expand((a:0 > 0 ? '#' . a:1 : '%') . ':p')
 endfunction
@@ -20,3 +21,31 @@ endfunction
 function! lsc#utils#get_buffer_uri(...) abort
     return lsc#uri#path_to_uri(expand((a:0 > 0 ? '#' . a:1 : '%') . ':p'))
 endfunction
+" }}}
+"
+
+" {{{
+function! lsc#utils#get_visual_selection_pos() abort
+    let [line_start, column_start] = getpos("'<")[1:2]
+    let [line_end, column_end] = getpos("'>")[1:2]
+    let lines = getline(line_start, line_end)
+    if len(lines) == 0
+        return [0, 0, 0, 0]
+    endif
+    let lines[-1] = lines[-1][: column_end - (&selection ==# 'inclusive' ? 1 : 2)]
+    let lines[0] = lines[0][column_start - 1:]
+    return [line_start, column_start, line_end, len(lines[-1])]
+endfunction
+
+
+function! lsc#utils#get_TextDocumentPositionParams() abort
+    let [l:bufnum, l:lnum, l:col, l:off, l:curswant] = getcurpos()
+    return {
+                \ 'textDocument' : {'uri': lsc#utils#get_buffer_uri(l:bufnum)},
+                \ 'position': {'line': l:lnum - 1, 'character': l:col - 1},
+                \ }
+endfunction
+
+function! lsc#utils#get_TextDocumentItem() abort
+endfunction
+" }}}

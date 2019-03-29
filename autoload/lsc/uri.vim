@@ -41,5 +41,5 @@ function! lsc#uri#path_to_uri(path) abort
 endfunction
 
 function! lsc#uri#uri_to_path(uri) abort
-    return s:decode_uri(a:uri[len('file://'):])
+    return fnamemodify(expand(resolve(s:decode_uri(a:uri[len('file://'):]))), ':~:.')
 endfunction

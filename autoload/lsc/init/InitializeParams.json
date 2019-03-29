@@ -1,0 +1,13 @@
+{
+  "processId": -1,
+  "rootPath": "",
+  "rootUri": "",
+  "initializationOptions": {},
+  "capabilities": {
+    "workspace": {},
+    "textDocument": {},
+    "experimental": {}
+  },
+  "trace": "off",
+  "workspaceFolders": []
+}
