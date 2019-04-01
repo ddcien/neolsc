@@ -1,5 +1,51 @@
 " vim: set foldmethod=marker foldlevel=0 nomodeline:
 
+" sign {{{
+
+let s:sign_defined = 0
+
+function! s:sign_define() abort
+    if s:sign_defined
+        return
+    endif
+    call execute([
+                \ 'sign define ddlsc_error text=E texthl=Error',
+                \ 'sign define ddlsc_warning text=W texthl=Search',
+                \ 'sign define ddlsc_information text=I texthl=WildMenu',
+                \ 'sign define ddlsc_hint text=H texthl=StatusLineNC',
+                \ ])
+    let s:sign_defined = 1
+endfunction
+
+function! s:sign_undefine() abort
+    if !s:sign_defined
+        return
+    endif
+
+    call execute([
+                \ 'sign undefine ddlsc_error',
+                \ 'sign undefine ddlsc_warning',
+                \ 'sign undefine ddlsc_information',
+                \ 'sign undefine ddlsc_hint',
+                \ ])
+    let s:sign_defined = 0
+endfunction
+
+function! s:sign_place(buf, chunks) abort
+    for l:item in a:chunks
+        call execute(printf('sign place %d line=%d name=%s buffer=%d',
+                    \ l:item[0] + 1,
+                    \ l:item[0] + 1,
+                    \ l:item[1], a:buf)
+                    \)
+    endfor
+endfunction
+
+function! s:sign_unplace(buf) abort
+    call execute(printf('sign unplace * buffer=%d', a:buf))
+endfunction
+" }}}
+
 " diagnostics {{{
 let s:diagnostic_ns_id = 0
 
@@ -26,12 +72,13 @@ function! s:split_range(range)
     return l:list
 endfunction
 
-
 function! lsc#diagnostics#handle_diagnostics(fh, diagnostics) abort
     if s:diagnostic_ns_id == 0
         let s:diagnostic_ns_id = nvim_create_namespace('ddlsc_diagnostic')
+        call s:sign_define()
     else
         call a:fh.set_virtual_text(s:diagnostic_ns_id, -1, [])
+        sign_unplace(a:fh._buf)
     endif
 
     if empty(a:diagnostics)
@@ -53,12 +100,16 @@ function! lsc#diagnostics#handle_diagnostics(fh, diagnostics) abort
             for [l:line, l:sc, l:ec] in s:split_range(l:diag['range'])
                 call a:fh.add_highlight(s:diagnostic_ns_id, l:line, l:severity[1], l:sc, l:ec)
             endfor
-            call add(l:chunks,
-                        \ ['[' . l:severity[0] . ': ' . l:diag['message'] . ']', l:severity[1]]
+            call add(l:chunks, [
+                        \ printf(' -> [%s]:[%s]: %s', get(l:diag, 'source', 'NA'), l:severity[0], l:diag['message']),
+                        \ l:severity[1],
+                        \ ]
                         \ )
         endfor
 
         call a:fh.set_virtual_text(s:diagnostic_ns_id, str2nr(l:line), l:chunks)
+        " TODO: Get the highest severity
+        call s:sign_place(a:fh._buf, [[str2nr(line), 'ddlsc_error']])
     endfor
 endfunction
 
@@ -99,5 +150,4 @@ function! lsc#diagnostics#list_workspace_diagnostics(fhs) abort
     call setloclist(0, l:locs)
     call lsc#locations#locations_ui(1)
 endfunction
-
 " }}}
