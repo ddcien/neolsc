@@ -65,50 +65,50 @@ augroup lsc_auto_enable
     autocmd VimEnter * call lsc#enable()
 augroup END
 
+command! LscWorkspaceSymbol call lsc#workspace_symbol()
+command! LscWorkspaceDiag call lsc#workspace_diagnostics()
 
 command! LscCodeAction call lsc#textDocument_codeAction()
 command! LscDeclaration call lsc#textDocument_declaration()
 command! LscDefinition call lsc#textDocument_definition()
-command! LscDocumentSymbol call lsc#textDocument_documentSymbol()
+command! LscSymbol call lsc#textDocument_documentSymbol()
 command! LscReferences call lsc#textDocument_references()
 command! LscRename call lsc#textDocument_rename()
 command! LscTypeDefinition call lsc#textDocument_typeDefinition()
-command! LscWorkspaceSymbol call lsc#workspace_symbol()
 command! LscImplementation call lsc#textDocument_implementation()
 command! LscFold call lsc#textDocument_foldingRange()
-command! LscDocumentFormat call lsc#textDocument_formatting()
-command! -range LscDocumentRangeFormat call lsc#textDocument_rangeFormatting()
+command! LscFormat call lsc#textDocument_formatting()
+command! -range LscRangeFormat call lsc#textDocument_rangeFormatting()
 command! LscHover call lsc#textDocument_hover()
-command! LscDocumentLink call lsc#textDocument_documentLink()
+command! LscLink call lsc#textDocument_documentLink()
 command! LscCodelens call lsc#textDocument_codeLens()
 command! LscHighlight call lsc#textDocument_documentHighlight()
 command! LscNextDiag call lsc#Diagnostics_next()
 command! LscPrevDiag call lsc#Diagnostics_prev()
-command! LscDocumentDiag call lsc#textDocument_diagnostics()
-command! LscWorkspaceDiag call lsc#workspace_diagnostics()
+command! LscDiag call lsc#textDocument_diagnostics()
 command! -nargs=0 LscStatus echomsg lsc#status()
 
+nnoremap <plug>(lsc-workspace-symbol) :<c-u>call lsc#workspace_symbol()<cr>
+nnoremap <plug>(lsc-workspace-diag) :<c-u>call lsc#workspace_diagnostics()<cr>
 
 nnoremap <plug>(lsc-code-action) :<c-u>call lsc#textDocument_codeAction()<cr>
 nnoremap <plug>(lsc-declaration) :<c-u>call lsc#textDocument_declaration()<cr>
 nnoremap <plug>(lsc-definition) :<c-u>call lsc#textDocument_definition()<cr>
-nnoremap <plug>(lsc-document-symbol) :<c-u>call lsc#textDocument_documentSymbol()<cr>
+nnoremap <plug>(lsc-symbol) :<c-u>call lsc#textDocument_documentSymbol()<cr>
 nnoremap <plug>(lsc-references) :<c-u>call lsc#textDocument_references()<cr>
 nnoremap <plug>(lsc-rename) :<c-u>call lsc#textDocument_rename()<cr>
 nnoremap <plug>(lsc-type-definition) :<c-u>call lsc#textDocument_typeDefinition()<cr>
-nnoremap <plug>(lsc-workspace-symbol) :<c-u>call lsc#workspace_symbol()<cr>
 nnoremap <plug>(lsc-implementation) :<c-u>call lsc#textDocument_implementation()<cr>
 nnoremap <plug>(lsc-fold) :<c-u>call lsc#textDocument_foldingRange()<cr>
-nnoremap <plug>(lsc-document-format) :<c-u>call lsc#textDocument_formatting()<cr>
-vnoremap <plug>(lsc-document-format) :call lsc#textDocument_rangeFormatting()<cr>
+nnoremap <plug>(lsc-format) :<c-u>call lsc#textDocument_formatting()<cr>
+vnoremap <plug>(lsc-format) :call lsc#textDocument_rangeFormatting()<cr>
 nnoremap <plug>(lsc-hover) :<c-u>call lsc#textDocument_hover()<cr>
-nnoremap <plug>(lsc-document-link) :<c-u>call lsc#textDocument_documentLink()<cr>
+nnoremap <plug>(lsc-link) :<c-u>call lsc#textDocument_documentLink()<cr>
 nnoremap <plug>(lsc-codelens) :<c-u>call lsc#textDocument_codeLens()<cr>
 nnoremap <plug>(lsc-highlight) :<c-u>call lsc#textDocument_documentHighlight()<cr>
 nnoremap <plug>(lsc-next-diag) :<c-u>call lsc#Diagnostics_next()<cr>
 nnoremap <plug>(lsc_prev-diag) :<c-u>call lsc#Diagnostics_prev()<cr>
-nnoremap <plug>(lsc-document-diag) :<c-u>call lsc#textDocument_diagnostics()<cr>
-nnoremap <plug>(lsc-workspace-diag) :<c-u>call lsc#workspace_diagnostics()<cr>
+nnoremap <plug>(lsc-diag) :<c-u>call lsc#textDocument_diagnostics()<cr>
 nnoremap <plug>(lsc-status) :<c-u>call lsc#status()<cr>
 
 
