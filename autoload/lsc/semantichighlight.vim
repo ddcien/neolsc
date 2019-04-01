@@ -3,36 +3,48 @@
 " SemanticHighlight {{{
 let s:semantic_highlight_ns_id = 0
 
-hi link ddlsc_Unknown Macro
-hi link ddlsc_File Macro
-hi link ddlsc_Module Macro
-hi link ddlsc_Namespace Macro
-hi link ddlsc_Package Macro
-hi link ddlsc_Class Macro
-hi link ddlsc_Method Macro
-hi link ddlsc_Property Macro
-hi link ddlsc_Field Macro
-hi link ddlsc_Constructor Macro
-hi link ddlsc_Enum Macro
-hi link ddlsc_Interface Macro
-hi link ddlsc_Function Macro
-hi link ddlsc_Variable Macro
+hi default Member ctermfg=LightBlue guifg=LightBlue
+hi default Variable ctermfg=Grey guifg=Grey
+hi default Namespace ctermfg=Yellow guifg=#BBBB00
+hi default Typedef ctermfg=Yellow gui=bold guifg=#BBBB00
+hi default EnumConstant ctermfg=LightGreen guifg=LightGreen
+hi default chromaticaException ctermfg=Yellow gui=bold guifg=#B58900
+hi default chromaticaCast ctermfg=Green gui=bold guifg=#719E07
+hi default OperatorOverload cterm=bold ctermfg=14 gui=bold guifg=#268bd2
+hi default AccessQual cterm=underline ctermfg=81 gui=bold guifg=#6c71c4
+hi default Linkage ctermfg=239 guifg=#09AA08
+hi default AutoType ctermfg=Yellow guifg=#cb4b16
+
+hi link ddlsc_Unknown Normal
+hi link ddlsc_File Namespace
+hi link ddlsc_Module Namespace
+hi link ddlsc_Namespace Namespace
+hi link ddlsc_Package Namespace
+hi link ddlsc_Class Type
+hi link ddlsc_Method Function
+hi link ddlsc_Property Normal
+hi link ddlsc_Field Member
+hi link ddlsc_Constructor Function
+hi link ddlsc_Enum Type
+hi link ddlsc_Interface Normal
+hi link ddlsc_Function Function
+hi link ddlsc_Variable Variable
 hi link ddlsc_Constant Constant
 hi link ddlsc_String String
-hi link ddlsc_Number Numbers
+hi link ddlsc_Number Number
 hi link ddlsc_Boolean Boolean
-hi link ddlsc_Array Macro
-hi link ddlsc_Object Macro
+hi link ddlsc_Array Variable
+hi link ddlsc_Object Variable
 hi link ddlsc_Key Macro
-hi link ddlsc_Null Macro
-hi link ddlsc_EnumMember Macro
-hi link ddlsc_Struct Macro
+hi link ddlsc_Null Constant
+hi link ddlsc_EnumMember Constant
+hi link ddlsc_Struct Type
 hi link ddlsc_Event Macro
-hi link ddlsc_Operator Macro
-hi link ddlsc_TypeParameter Macro
-hi link ddlsc_TypeAlias Macro
-hi link ddlsc_Parameter Macro
-hi link ddlsc_StaticMethod Macro
+hi link ddlsc_Operator Operator
+hi link ddlsc_TypeParameter Identifier
+hi link ddlsc_TypeAlias Type
+hi link ddlsc_Parameter Variable
+hi link ddlsc_StaticMethod Function
 hi link ddlsc_Macro Macro
 
 
