@@ -57,6 +57,6 @@ function! lsc#symbols#handle_symbols(buf, response)
         call map(l:symbols, {_, sym -> s:DocumentSymbol_to_locinfo(a:buf, sym)})
     endif
     call setloclist(0, l:symbols)
-    call lsc#locations#locations_ui(0)
+    call lsc#locations#locations_ui(1)
 endfunction
 " }}}

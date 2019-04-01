@@ -61,4 +61,43 @@ function! lsc#diagnostics#handle_diagnostics(fh, diagnostics) abort
         call a:fh.set_virtual_text(s:diagnostic_ns_id, str2nr(l:line), l:chunks)
     endfor
 endfunction
+
+function! s:Diagnostic_to_locinfo(buf, diag)
+    let l:line = a:diag['range']['start']['line'] + 1
+    let l:col = a:diag['range']['start']['character'] + 1
+    echom json_encode(a:diag)
+    let l:text = printf(' -> [%s]:[%s]: %s', get(a:diag, 'source', 'NA'), get(s:DiagnosticSeverity, get(a:diag, 'severity'))[0], a:diag['message'])
+    return {'bufnr': a:buf, 'lnum': l:line, 'col': l:col, 'text': l:text}
+endfunction
+
+function! lsc#diagnostics#list_diagnostics(fh) abort
+    let l:diagnostics = deepcopy(get(a:fh, '_diagnostics'))
+    if empty(l:diagnostics)
+        return
+    endif
+    call map(l:diagnostics, {_, diag -> s:Diagnostic_to_locinfo(a:fh._buf, diag)})
+    call setloclist(0, l:diagnostics)
+    call lsc#locations#locations_ui(1)
+endfunction
+
+function! lsc#diagnostics#list_workspace_diagnostics(fhs) abort
+    let l:locs = []
+    for l:fh in values(a:fhs)
+        let l:diagnostics = deepcopy(get(l:fh, '_diagnostics'))
+        if empty(l:diagnostics)
+            continue
+        endif
+        for l:diag in l:diagnostics
+            call add(l:locs, s:Diagnostic_to_locinfo(l:fh._buf, l:diag))
+        endfor
+    endfor
+
+    if empty(l:locs)
+        return
+    endif
+
+    call setloclist(0, l:locs)
+    call lsc#locations#locations_ui(1)
+endfunction
+
 " }}}

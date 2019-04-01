@@ -670,9 +670,8 @@ function! s:client.handle_textDocument_publishDiagnostics(notification)
     endif
 endfunction
 
-function! s:client.Diagnostics_next() abort
-    let [l:buf, l:line, l:col, _, _] = getcurpos()
-    let l:uri = lsc#utils#get_buffer_uri(l:buf)
+function! s:client.Diagnostics_next(buf, line, character) abort
+    let l:uri = lsc#utils#get_buffer_uri(a:buf)
     let l:fh = self._context._file_handlers[l:uri]
 
     if empty(l:fh._diagnostics)
@@ -680,21 +679,21 @@ function! s:client.Diagnostics_next() abort
     endif
 
     let l:to = l:fh._diagnostics[0]['range']['start']
+    let l:cur = {'line': a:line, 'character': a:character}
 
     for l:diag in l:fh._diagnostics
         let l:pos = l:diag['range']['start']
-        if (l:pos['line'] > l:line - 1) || (l:pos['line'] == l:line - 1 && l:pos['character'] > l:col)
+        if s:position_compare(l:cur, l:pos) < 0
             let l:to = l:pos
             break
         endif
     endfor
-
-    call setpos('.', [l:buf, l:to['line'] + 1, l:to['character'] + 1, 0])
+    echom json_encode(l:to)
+    call setpos('.', [a:buf, l:to['line'] + 1, l:to['character'] + 1, 0])
 endfunction
 
-function! s:client.Diagnostics_prev()
-    let [l:buf, l:line, l:col, _, _] = getcurpos()
-    let l:uri = lsc#utils#get_buffer_uri(l:buf)
+function! s:client.Diagnostics_prev(buf, line, character)
+    let l:uri = lsc#utils#get_buffer_uri(a:buf)
     let l:fh = self._context._file_handlers[l:uri]
 
     if empty(l:fh._diagnostics)
@@ -702,18 +701,35 @@ function! s:client.Diagnostics_prev()
     endif
 
     let l:to = l:fh._diagnostics[-1]['range']['start']
+    let l:cur = {'line': a:line, 'character': a:character}
 
     for l:diag in l:fh._diagnostics
         let l:pos = l:diag['range']['end']
-        if !((l:pos['line'] > l:line - 1) || (l:pos['line'] == l:line - 1 && l:pos['character'] > l:col - 1))
+        if s:position_compare(l:cur, l:pos) > 0
             let l:to = l:diag['range']['start']
             break
         endif
     endfor
 
-    call setpos('.', [l:buf, l:to['line'] + 1, l:to['character'] + 1, 0])
+    call setpos('.', [a:buf, l:to['line'] + 1, l:to['character'] + 1, 0])
 endfunction
 
+
+function! s:client.textDocument_diagnostics(buf) abort
+    if !self.initialized()
+        return
+    endif
+    let l:uri = lsc#utils#get_buffer_uri(a:buf)
+    let l:fh = self._context._file_handlers[l:uri]
+    call lsc#diagnostics#list_diagnostics(l:fh)
+endfunction
+
+function! s:client.workspace_diagnostics() abort
+    if !self.initialized()
+        return
+    endif
+    call lsc#diagnostics#list_workspace_diagnostics(self._context._file_handlers)
+endfunction
 " }}}
 
 " languageFeatures {{{
@@ -1333,7 +1349,7 @@ function! s:client.textDocument_colorPresentation(buf, color, range) abort
                 \ {response -> self.handle_textDocument_colorPresentation(a:buf, response)})
 endfunction
 " }}}
-" formatting done {{{
+" formatting : done {{{
 function! s:client.handle_textDocument_formatting(buf, response) abort
     let l:edits = get(a:response, 'result')
     if empty(l:edits)
@@ -1364,7 +1380,7 @@ function! s:client.textDocument_formatting(buf) abort
                 \ {response -> self.handle_textDocument_formatting(a:buf, response)})
 endfunction
 " }}}
-" rangeFormatting done {{{
+" rangeFormatting : done {{{
 function! s:client.textDocument_rangeFormatting(buf, range) abort
     if !self.initialized()
         return
@@ -1418,7 +1434,7 @@ function! s:client.textDocument_onTypeFormatting(buf, line, character) abort
                 \ {response -> self.handle_textDocument_formatting(a:buf, response)})
 endfunction
 " }}}
-" rename done {{{
+" rename : done {{{
 function! s:client.handle_textDocument_rename(response) abort
     let l:workspaceedit = get(a:response, 'result')
     if empty(l:workspaceedit)
@@ -1427,45 +1443,89 @@ function! s:client.handle_textDocument_rename(response) abort
     call lsc#workspaceedit#handle_WorkspaceEdit(self, l:workspaceedit)
 endfunction
 
-function! s:client.textDocument_rename(buf, line, character, name) abort
+function! s:client.textDocument_rename(buf, line, character) abort
     if !self.initialized()
         return
     endif
 
-    if !get(self.capabilities, 'renameProvider', v:false)
+    let l:provider = get(self.capabilities, 'renameProvider', v:false)
+    if empty(l:provider)
+        return
+    endif
+
+    if type(l:provider) == v:t_dict && !empty(get(l:provider, 'prepareProvider'))
+        call self.textDocument_prepareRename(a:buf, a:line, a:character)
         return
     endif
 
     call self.textDocument_didChange(a:buf)
+
+    let l:placeholder = expand('<cword>')
+    let l:new_name = input('new name: ', l:placeholder)
+
+    if l:new_name ==# l:placeholder
+        return
+    endif
     call self.send_request(
                 \ {
                 \     'method': 'textDocument/rename',
                 \     'params': {
                 \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
                 \         'position': lsc#lsp#get_Position(a:line, a:character),
-                \         'newName': a:name,
+                \         'newName': l:new_name,
                 \     }
                 \ },
                 \ {response -> self.handle_textDocument_rename(response)})
 endfunction
 " }}}
-" prepareRename {{{
+" prepareRename : done {{{
 function! s:client.handle_textDocument_prepareRename(buf, response) abort
-    "TODO:
+    let l:result = get(a:response, 'result')
+    if empty(l:result)
+        return
+    endif
+
+    if has_key(l:result, 'start')
+        let l:range = l:result
+        let l:line_start = l:range['start']['line']
+        let l:line_end = l:range['end']['line']
+        let l:col_start = l:range['start']['character']
+        let l:col_end = l:range['end']['character'] - 1
+
+        let l:o_lines = nvim_buf_get_lines(a:buf, l:line_start, l:line_end + 1, v:true)
+        if l:line_start == l:line_end
+            let l:placeholder = l:o_lines[0][l:col_start : l:col_end]
+        else
+            let l:placeholder = l:o_lines[0][l:col_start :]
+            for l:i in range(1, len(l:o_lines) - 2)
+                let l:placeholder .= "\n" . l:o_lines[l:i]
+            endfor
+            let l:placeholder .= l:o_lines[-1][: l:col_end]
+        endif
+    else
+        let l:range = get(l:result, 'range')
+        let l:placeholder = get(l:result, 'placeholder')
+    endif
+
+    let l:new_name = input('new name: ', l:placeholder)
+    if l:new_name ==# l:placeholder
+        return
+    endif
+
+    call self.send_request(
+                \ {
+                \     'method': 'textDocument/rename',
+                \     'params': {
+                \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \         'position': l:range['start'],
+                \         'newName': l:new_name,
+                \     }
+                \ },
+                \ {response -> self.handle_textDocument_rename(response)})
 endfunction
 
-function! s:client.textDocument_prepareRename(buf, line, character) abort
-    if !self.initialized()
-        return
-    endif
-    let l:renameOptions = get(self.capabilities, 'renameProvider')
-    if !l:renameOptions || type(l:renameOptions) != v:t_dict || !get(l:renameOptions, 'prepareProvider')
-        return
-    endif
-    if !get(self.capabilities, 'renameProvider', v:false)
-        return
-    endif
 
+function! s:client.textDocument_prepareRename(buf, line, character) abort
     call self.textDocument_didChange(a:buf)
     call self.send_request(
                 \ {

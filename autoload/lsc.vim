@@ -313,7 +313,7 @@ function! lsc#Diagnostics_next()
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
     if lsc#client#is_client_instance(l:server)
-        call l:server.Diagnostics_next()
+        call l:server.Diagnostics_next(l:buf_nr, line('.') -1, col('.') -1)
     endif
 endfunction
 
@@ -322,7 +322,25 @@ function! lsc#Diagnostics_prev()
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
     if lsc#client#is_client_instance(l:server)
-        call l:server.Diagnostics_prev()
+        call l:server.Diagnostics_prev(l:buf_nr, line('.') -1, col('.') -1)
+    endif
+endfunction
+
+function! lsc#textDocument_diagnostics()
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if lsc#client#is_client_instance(l:server)
+        call l:server.textDocument_diagnostics(l:buf_nr)
+    endif
+endfunction
+
+function! lsc#workspace_diagnostics()
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if lsc#client#is_client_instance(l:server)
+        call l:server.workspace_diagnostics()
     endif
 endfunction
 " }}}
@@ -503,17 +521,7 @@ function! lsc#textDocument_rename() abort
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
     if lsc#client#is_client_instance(l:server)
-        let l:name = input('new name: ', expand('<cword>'))
-        call l:server.textDocument_rename(l:buf_nr, line('.') -1, col('.') -1, name)
-    endif
-endfunction
-
-function! lsc#textDocument_prepareRename() abort
-    let l:buf_nr = bufnr('%')
-    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
-    let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_prepareRename(l:buf_nr, line('.') -1, col('.') -1)
+        call l:server.textDocument_rename(l:buf_nr, line('.') -1, col('.') -1)
     endif
 endfunction
 
