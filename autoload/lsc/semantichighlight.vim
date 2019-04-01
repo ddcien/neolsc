@@ -82,10 +82,19 @@ let s:SymbolKindHL = {
             \ '255': 'ddlsc_Macro',
             \ }
 
+hi link ddlsc_VariableRead Variable
+hi link ddlsc_VariableWrite Variable
+
+let s:StorageKindHL = {
+            \ '1': 'Variable',
+            \ '2': 'ddlsc_VariableRead',
+            \ '3': 'ddlsc_VariableWrite',
+            \ }
+
 function! s:parse_highlight(hl)
     let l:list = []
-
-    let l:hl = get(s:SymbolKindHL, get(a:hl, 'kind'))
+    let l:hl = get(s:StorageKindHL, get(a:hl, 'storage'),
+                \ get(s:SymbolKindHL, get(a:hl, 'kind')))
 
     let l:rg = a:hl['range']
     let l:sl = l:rg['start']['line']
