@@ -983,34 +983,6 @@ function! s:client.textDocument_references(buf, line, character, incdec) abort
 endfunction
 " }}}
 " documentHighlight : done {{{
-function! s:client.handle_ccls_publishSkippedRanges(notification)
-    let l:skippedRanges = get(a:notification, 'params')
-    let l:uri = l:skippedRanges['uri']
-    let l:ranges = l:skippedRanges['skippedRanges']
-    let l:buf = bufnr(lsc#uri#uri_to_path(l:uri))
-    if l:buf < 0
-        return
-    endif
-    let l:fh = self._context._file_handlers[l:uri]
-    call assert_equal(l:buf, l:fh._buf)
-
-    call lsc#skippedranges#handle_skipped_ranges(l:fh, l:ranges)
-endfunction
-
-function! s:client.handle_ccls_publishSemanticHighlight(notification)
-    let l:semantichighlight = get(a:notification, 'params')
-    let l:uri = l:semantichighlight['uri']
-    let l:symbols = l:semantichighlight['symbols']
-    let l:buf = bufnr(lsc#uri#uri_to_path(l:uri))
-    if l:buf < 0
-        return
-    endif
-    let l:fh = self._context._file_handlers[l:uri]
-    call assert_equal(l:buf, l:fh._buf)
-
-    call lsc#semantichighlight#handle_semantic_highlight(l:fh, l:symbols)
-endfunction
-
 function! s:client.handle_textDocument_documentHighlight(buf, response)
     let l:highlights = get(a:response, 'result')
     let l:uri = lsc#utils#get_buffer_uri(a:buf)
@@ -1621,6 +1593,329 @@ function! s:client.textDocument_foldingRange(buf) abort
                 \ },
                 \ {response -> self.handle_textDocument_foldingRange(a:buf, response)})
 endfunction
+" }}}
+" CCLS {{{
+" ccls_publishSkippedRanges : done {{{
+function! s:client.handle_ccls_publishSkippedRanges(notification)
+    let l:skippedRanges = get(a:notification, 'params')
+    let l:uri = l:skippedRanges['uri']
+    let l:ranges = l:skippedRanges['skippedRanges']
+    let l:buf = bufnr(lsc#uri#uri_to_path(l:uri))
+    if l:buf < 0
+        return
+    endif
+    let l:fh = self._context._file_handlers[l:uri]
+    call assert_equal(l:buf, l:fh._buf)
+
+    call lsc#skippedranges#handle_skipped_ranges(l:fh, l:ranges)
+endfunction
+" }}}
+
+" ccls_publishSemanticHighlight : doen {{{
+function! s:client.handle_ccls_publishSemanticHighlight(notification)
+    let l:semantichighlight = get(a:notification, 'params')
+    let l:uri = l:semantichighlight['uri']
+    let l:symbols = l:semantichighlight['symbols']
+    let l:buf = bufnr(lsc#uri#uri_to_path(l:uri))
+    if l:buf < 0
+        return
+    endif
+    let l:fh = self._context._file_handlers[l:uri]
+    call assert_equal(l:buf, l:fh._buf)
+
+    call lsc#semantichighlight#handle_semantic_highlight(l:fh, l:symbols)
+endfunction
+"}}}
+
+" ccls_call : done {{{
+
+let s:CallTypes = ['Direct', 'Base', 'Derived', 'All' ]
+
+function! s:cclsCall_to_locinfo(item)
+    let l:location = get(a:item, 'location')
+
+    return {
+                \ 'filename': lsc#uri#uri_to_path(l:location['uri']),
+                \ 'lnum': l:location['range']['start']['line'] + 1,
+                \ 'col': l:location['range']['start']['character'] + 1,
+                \ 'text': printf(' -> [%s]: %s', s:CallTypes[a:item['callType']], a:item['name'])
+                \}
+endfunction
+
+function! s:client.handle_ccls_call(response) abort
+    let l:result = get(a:response, 'result')
+    if empty(l:result)
+        return
+    endif
+
+    if len(l:result['children']) <= 0
+        return
+    endif
+    let l:loc = [s:cclsCall_to_locinfo(l:result)]
+    for l:item in l:result['children']
+        call add(l:loc, s:cclsCall_to_locinfo(l:item))
+    endfor
+    call setloclist(0, l:loc)
+    call lsc#locations#locations_ui(0)
+endfunction
+
+function! s:client.ccls_call(buf, line, character, callee) abort
+    if !self.initialized()
+        return
+    endif
+
+    call self.textDocument_didChange(a:buf)
+    call self.send_request(
+                \ {
+                \     'method': '$ccls/call',
+                \     'params': {
+                \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \         'position': lsc#lsp#get_Position(a:line, a:character),
+                \         'callee': a:callee,
+                \         'CallType': 3,
+                \         'qualified': v:false,
+                \         'levels': 1,
+                \         'hierarchy': v:true,
+                \      }
+                \ },
+                \ {response -> self.handle_ccls_call(response)})
+endfunction
+" }}}
+
+" ccls_fileInfo {{{
+" TODO(Richard): display the info in status line
+function! s:client.handle_ccls_fileInfo(response) abort
+    let l:result = get(a:response, 'result')
+    if empty(l:result)
+        return
+    endif
+    echomsg json_encode(l:result)
+endfunction
+
+function! s:client.ccls_fileInfo(buf) abort
+    if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#documentSymbol(self.capabilities)
+        return
+    endif
+
+    call self.textDocument_didChange(a:buf)
+    call self.send_request(
+                \ {
+                \     'method': '$ccls/fileInfo',
+                \     'params': {
+                \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \      }
+                \ },
+                \ {response -> self.handle_ccls_fileInfo(response)})
+endfunction
+" }}}
+
+" ccls_info {{{
+" TODO(Richard): display the info in status line
+function! s:client.handle_ccls_info(response) abort
+    let l:result = get(a:response, 'result')
+    if empty(l:result)
+        return
+    endif
+    echomsg json_encode(l:result)
+endfunction
+
+function! s:client.ccls_info() abort
+    if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#documentSymbol(self.capabilities)
+        return
+    endif
+
+    call self.send_request(
+                \ {
+                \     'method': '$ccls/info',
+                \ },
+                \ {response -> self.handle_ccls_info(response)})
+endfunction
+
+" }}}
+
+" ccls_inheritance : done {{{
+let s:InheritanceKinds =  ['Invalid', 'File', 'Type', 'Function', 'Variable']
+
+function! s:cclsInheritance_to_locinfo(item)
+    let l:location = get(a:item, 'location')
+    return {
+                \ 'filename': lsc#uri#uri_to_path(l:location['uri']),
+                \ 'lnum': l:location['range']['start']['line'] + 1,
+                \ 'col': l:location['range']['start']['character'] + 1,
+                \ 'text': printf(' -> [%s]: %s', s:InheritanceKinds[a:item['kind']], a:item['name'])
+                \}
+endfunction
+
+function! s:client.handle_ccls_inheritance(response) abort
+    let l:result = get(a:response, 'result')
+    if empty(l:result)
+        return
+    endif
+
+    if len(l:result['children']) <= 0
+        return
+    endif
+    let l:loc = [s:cclsInheritance_to_locinfo(l:result)]
+    for l:item in l:result['children']
+        call add(l:loc, s:cclsInheritance_to_locinfo(l:item))
+    endfor
+    call setloclist(0, l:loc)
+    call lsc#locations#locations_ui(0)
+endfunction
+
+function! s:client.ccls_inheritance(buf, line, character, derived) abort
+    if !self.initialized()
+        return
+    endif
+
+    call self.textDocument_didChange(a:buf)
+    call self.send_request(
+                \ {
+                \     'method': '$ccls/inheritance',
+                \     'params': {
+                \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \         'position': lsc#lsp#get_Position(a:line, a:character),
+                \         'derived': a:derived,
+                \         'qualified': v:false,
+                \         'levels': 1,
+                \         'hierarchy': v:true,
+                \      }
+                \ },
+                \ {response -> self.handle_ccls_inheritance(response)})
+endfunction
+" }}}
+
+" ccls_member : done {{{
+function! s:cclsMember_to_locinfo(item)
+    let l:location = get(a:item, 'location')
+    return {
+                \ 'filename': lsc#uri#uri_to_path(l:location['uri']),
+                \ 'lnum': l:location['range']['start']['line'] + 1,
+                \ 'col': l:location['range']['start']['character'] + 1,
+                \ 'text': printf(' -> [%s]: %s', a:item['name'], a:item['fieldName'])
+                \}
+endfunction
+function! s:client.handle_ccls_member(response) abort
+    let l:result = get(a:response, 'result')
+    if empty(l:result)
+        return
+    endif
+
+    if len(l:result['children']) <= 0
+        return
+    endif
+    let l:loc = [s:cclsMember_to_locinfo(l:result)]
+    for l:item in l:result['children']
+        call add(l:loc, s:cclsMember_to_locinfo(l:item))
+    endfor
+    call setloclist(0, l:loc)
+    call lsc#locations#locations_ui(0)
+endfunction
+
+function! s:client.ccls_member(buf, line, character, kind) abort
+    if !self.initialized()
+        return
+    endif
+
+    call self.textDocument_didChange(a:buf)
+    call self.send_request(
+                \ {
+                \     'method': '$ccls/member',
+                \     'params': {
+                \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \         'position': lsc#lsp#get_Position(a:line, a:character),
+                \         'kind': a:kind,
+                \         'qualified': v:false,
+                \         'levels': 1,
+                \         'hierarchy': v:true,
+                \      }
+                \ },
+                \ {response -> self.handle_ccls_member(response)})
+endfunction
+" }}}
+
+" ccls_navigate : done {{{
+function! s:client.handle_ccls_navigate(buf, response) abort
+    call lsc#locations#handle_locations(0, 1, a:response)
+endfunction
+
+function! s:client.ccls_navigate(buf, line, character, direction) abort
+    if !self.initialized()
+        return
+    endif
+
+    call self.textDocument_didChange(a:buf)
+    call self.send_request(
+                \ {
+                \     'method': '$ccls/navigate',
+                \     'params': {
+                \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \         'position': lsc#lsp#get_Position(a:line, a:character),
+                \         'direction': a:direction,
+                \      }
+                \ },
+                \ {response -> self.handle_ccls_navigate(a:buf, response)})
+endfunction
+" }}}
+
+" ccls_reload {{{
+function! s:client.handle_ccls_reload(response) abort
+    let l:result = get(a:response, 'result')
+    if empty(l:result)
+        return
+    endif
+    echomsg json_encode(l:result)
+endfunction
+
+function! s:client.ccls_reload() abort
+    if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#documentSymbol(self.capabilities)
+        return
+    endif
+
+    call self.send_request(
+                \ {
+                \     'method': '$ccls/info',
+                \     'params': {
+                \         'dependencies': v:true,
+                \         'whitelist': [],
+                \         'blacklist': [],
+                \     }
+                \ },
+                \ {response -> self.handle_ccls_reload(response)})
+endfunction
+" }}}
+
+" ccls_vars : done {{{
+function! s:client.handle_ccls_vars(response) abort
+    call lsc#locations#handle_locations(0, 1, a:response)
+endfunction
+
+function! s:client.ccls_vars(buf, line, character) abort
+    if !self.initialized()
+        return
+    endif
+
+    call self.textDocument_didChange(a:buf)
+    call self.send_request(
+                \ {
+                \     'method': '$ccls/vars',
+                \     'params': {
+                \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \         'position': lsc#lsp#get_Position(a:line, a:character),
+                \      }
+                \ },
+                \ {response -> self.handle_ccls_vars(response)})
+endfunction
+" }}}
 " }}}
 " }}}
 

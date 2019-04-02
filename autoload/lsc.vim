@@ -500,6 +500,7 @@ function! lsc#textDocument_documentSymbol() abort
     call l:server.textDocument_documentSymbol(l:buf_nr)
 endfunction
 
+" {{{
 function! lsc#textDocument_codeAction() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
@@ -549,6 +550,32 @@ function! lsc#textDocument_quikFix() abort
     endif
 
 endfunction
+
+function! lsc#codeAction_next()
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if lsc#client#is_client_instance(l:server)
+    endif
+endfunction
+
+function! lsc#codeAction_prev()
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if lsc#client#is_client_instance(l:server)
+    endif
+endfunction
+
+function! lsc#codeActions()
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if lsc#client#is_client_instance(l:server)
+    endif
+endfunction
+
+" }}}
 
 function! lsc#textDocument_codeAction_all() abort
     let l:buf_nr = bufnr('%')
@@ -676,4 +703,178 @@ function! lsc#textDocument_foldingRange() abort
     endif
     call l:server.textDocument_foldingRange(l:buf_nr)
 endfunction
+" CCLS {{{
+" ccls_call {{{
+function! lsc#ccls_caller() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_call(l:buf_nr, line('.') -1, col('.') -1, v:false)
+endfunction
+
+function! lsc#ccls_callee() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_call(l:buf_nr, line('.') -1, col('.') -1, v:true)
+endfunction
 " }}}
+
+" ccls_fileInfo {{{
+function! lsc#ccls_fileInfo() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_fileInfo(l:buf_nr)
+endfunction
+" }}}
+
+" ccls_info {{{
+function! lsc#ccls_info() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_info()
+endfunction
+" }}}
+
+" ccls_inheritance {{{
+function! lsc#ccls_inheritance_base() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_inheritance(l:buf_nr, line('.') -1, col('.') -1, v:false)
+endfunction
+
+function! lsc#ccls_inheritance_derived() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_inheritance(l:buf_nr, line('.') -1, col('.') -1, v:true)
+endfunction
+" }}}
+
+" ccls_member {{{
+function! lsc#ccls_member_file() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_member(l:buf_nr, line('.') -1, col('.') -1, 1)
+endfunction
+function! lsc#ccls_member_type() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_member(l:buf_nr, line('.') -1, col('.') -1, 2)
+endfunction
+function! lsc#ccls_member_function() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_member(l:buf_nr, line('.') -1, col('.') -1,  3)
+endfunction
+function! lsc#ccls_member_variable() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_member(l:buf_nr, line('.') -1, col('.') -1, 4)
+endfunction
+" }}}
+
+" ccls_navigate {{{
+function! lsc#ccls_navigate_down() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_navigate(l:buf_nr, line('.') -1, col('.') -1, 'D')
+endfunction
+function! lsc#ccls_navigate_up() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_navigate(l:buf_nr, line('.') -1, col('.') -1, 'U')
+endfunction
+function! lsc#ccls_navigate_left() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_navigate(l:buf_nr, line('.') -1, col('.') -1, 'L')
+endfunction
+function! lsc#ccls_navigate_right() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_navigate(l:buf_nr, line('.') -1, col('.') -1, 'R')
+endfunction
+" }}}
+
+" ccls_reload {{{
+function! lsc#ccls_reload() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_reload()
+endfunction
+" }}}
+
+" ccls_vars {{{
+function! lsc#ccls_vars() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    call l:server.ccls_vars(l:buf_nr, line('.') -1, col('.') -1)
+endfunction
+" }}}
+
+" }}}
+" }}}
+"
+" 

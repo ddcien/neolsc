@@ -44,7 +44,7 @@ function! s:locations_to_qf_list(locations)
         else
             let l:text = getbufline(l:buf, l:line + 1)[0]
         endif
-        call add(l:list, {'filename': l:path, 'lnum': l:line + 1, 'col': l:col + 1, 'text': l:text})
+        call add(l:list, {'filename': l:path, 'lnum': l:line + 1, 'col': l:col + 1, 'text': printf(' -> [%s]',l:text)})
     endfor
 
     call uniq(l:list, function('s:loc_compare_lite'))
