@@ -132,7 +132,7 @@ function! s:handle_textedit(buf, edit)
         let l:head = l:o_lines[0][:l:col_start - 1]
     endif
 
-    let l:tail = l:o_lines[-1][l:col_end:]
+    let l:tail = l:o_lines[-1][l:col_end :]
     let l:n_lines = split(l:new_text, "\n", 1)
     let l:n_lines[0] = l:head . l:n_lines[0]
     let l:n_lines[-1] = l:n_lines[-1] . l:tail

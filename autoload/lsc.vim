@@ -15,9 +15,9 @@ function! s:get_visual_selection_pos() abort
     if len(lines) == 0
         return [0, 0, 0, 0]
     endif
-    let lines[-1] = lines[-1][: column_end - (&selection ==# 'inclusive' ? 1 : 2)]
+    let lines[- 1] = lines[- 1][: column_end - (&selection ==# 'inclusive' ? 1 : 2)]
     let lines[0] = lines[0][column_start - 1:]
-    return [line_start, column_start, line_end, len(lines[-1])]
+    return [line_start, column_start, line_end, len(lines[- 1])]
 endfunction
 
 function! s:get_server_command(ft) abort
@@ -91,35 +91,70 @@ function! s:get_last_char()
     return l:line[col('.') - 2]
 endfunction
 
-function! s:on_TextChangedI()
+function! s:on_insert_enter()
+    let s:enter_position = getcurpos()
+endfunction
+
+function! s:on_text_changed_i()
+    if s:enter_position[1] != line('.')
+        let s:enter_position = getcurpos()
+        return
+    endif
+
+    let l:line = nvim_get_current_line()
+    if empty(l:line)
+        return
+    endif
+
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    let l:char = s:get_last_char()
-    call l:server.textDocument_didChange(l:buf_nr)
+    if pumvisible()
+        return
+    endif
 
-    if index(l:server.capabilities.completionProvider.triggerCharacters, l:char) >= 0
+    let l:char = l:line[col('.') - 2]
+    if index(lsc#capabilities#completion_triggerCharacters(l:server.capabilities), l:char) >= 0
         call l:server.textDocument_completion(l:buf_nr, line('.') - 1, col('.') - 1, 2, l:char)
-    elseif index(l:server.capabilities.signatureHelpProvider.triggerCharacters, l:char) >= 0
-        call l:server.textDocument_signatureHelp(l:buf_nr, line('.') -1, col('.') -1)
+    elseif index(lsc#capabilities#signatureHelp_triggerCharacters(l:server.capabilities), l:char) >= 0
+        call l:server.textDocument_signatureHelp(l:buf_nr, line('.') - 1, col('.') - 1)
+    elseif index(lsc#capabilities#documentOnTypeFormatting_triggerCharacters(l:server.capabilities), l:char) >= 0
+        call l:server.textDocument_onTypeFormatting(l:buf_nr, line('.') - 1, col('.') - 1)
+    elseif col('.') - s:enter_position[2] > 100000
+        call l:server.textDocument_completion(l:buf_nr, line('.') - 1, col('.') - 1, 1, '')
     endif
     redraws
+endfunction
+
+function! s:on_text_changed_p()
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    let l:line = nvim_get_current_line()
+    let l:char = l:line[col('.') - 2]
+    echom printf('%d: <%s>', pumvisible(), l:char)
 endfunction
 
 function! s:register_events() abort
     augroup register_events
         autocmd!
         autocmd BufReadPost * if has_key(s:servers_whitelist, &filetype) | call s:on_text_document_did_open() | endif
-        autocmd InsertLeave,TextChanged,TextChangedP * if has_key(s:servers_whitelist, &filetype) | call s:on_text_document_did_change() | endif
+        autocmd InsertEnter * if has_key(s:servers_whitelist, &filetype) | call s:on_insert_enter() | endif
+        autocmd InsertLeave,TextChanged * if has_key(s:servers_whitelist, &filetype) | call s:on_text_document_did_change() | endif
         autocmd BufWritePre * if has_key(s:servers_whitelist, &filetype) |  call s:on_text_document_did_will_save() | endif
         autocmd BufWritePost * if has_key(s:servers_whitelist, &filetype) |  call s:on_text_document_did_save() | endif
         autocmd BufUnload * if has_key(s:servers_whitelist, &filetype) | call s:on_text_document_did_close() | endif
         autocmd CursorHold * if has_key(s:servers_whitelist, &filetype) | call lsc#textDocument_documentHighlight() | endif
+        autocmd TextChangedI * if has_key(s:servers_whitelist, &filetype) | call s:on_text_changed_i() | endif
+        autocmd TextChangedP * if has_key(s:servers_whitelist, &filetype) | call s:on_text_changed_p() | endif
+
         autocmd FileType c,cpp,python setlocal omnifunc=lsc#complete
-        " autocmd TextChangedI *  if has_key(s:servers_whitelist, &filetype) |  call s:on_TextChangedI() | endif
     augroup END
 endfunction
 " }}}
@@ -146,7 +181,7 @@ function! lsc#status() abort
         echom 'No server is running!'
     endif
     for [l:ft, l:server] in items(s:servers)
-        let l:jobid = get(l:server, '_jobid', -1)
+        let l:jobid = get(l:server, '_jobid', - 1)
         if l:jobid < 0
             echom printf('Server for [%s] is not running.', l:ft)
         else
@@ -269,7 +304,7 @@ function! s:on_text_document_did_close() abort
     if !lsc#capabilities#TextDocumentSync_openClose(l:server.capabilities)
         return
     endif
-    call l:server.textDocument_didClose(l:buf_nr)
+    " call l:server.textDocument_didClose(l:buf_nr)
 endfunction
 
 
@@ -336,7 +371,7 @@ function! lsc#Diagnostics_next()
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
     if lsc#client#is_client_instance(l:server)
-        call l:server.Diagnostics_next(l:buf_nr, line('.') -1, col('.') -1)
+        call l:server.Diagnostics_next(l:buf_nr, line('.') - 1, col('.') - 1)
     endif
 endfunction
 
@@ -345,7 +380,7 @@ function! lsc#Diagnostics_prev()
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
     if lsc#client#is_client_instance(l:server)
-        call l:server.Diagnostics_prev(l:buf_nr, line('.') -1, col('.') -1)
+        call l:server.Diagnostics_prev(l:buf_nr, line('.') - 1, col('.') - 1)
     endif
 endfunction
 
@@ -369,23 +404,30 @@ endfunction
 " }}}
 
 " Language Features {{{
-function! lsc#textDocument_completion(kind, string) abort
+function! lsc#textDocument_completion() abort
+    if pumvisible() || mode() !=# 'i'
+        return
+    endif
+
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    if !lsc#capabilities#completion(l:server.capabilities)
-        return
-    endif
 
-    if a:kind == 2 && index(lsc#capabilities#completion_triggerCharacters(l:server.capabilities), a:string) < 0
-        return
-    endif
+    let l:line = nvim_get_current_line()
+    let l:char = l:line[col('.') - 2]
 
-    call l:server.textDocument_didChange(l:buf_nr)
-    call l:server.textDocument_completion(l:buf_nr, line('.') -1, col('.') -1, a:kind, a:string)
+    if index(lsc#capabilities#completion_triggerCharacters(l:server.capabilities), l:char) >= 0
+        call l:server.textDocument_completion(l:buf_nr, line('.') - 1, col('.') - 1, 2, l:char)
+    elseif index(lsc#capabilities#signatureHelp_triggerCharacters(l:server.capabilities), l:char) >= 0
+        call l:server.textDocument_signatureHelp(l:buf_nr, line('.') - 1, col('.') - 1)
+    elseif index(lsc#capabilities#documentOnTypeFormatting_triggerCharacters(l:server.capabilities), l:char) >= 0
+        call l:server.textDocument_onTypeFormatting(l:buf_nr, line('.') - 1, col('.') - 1)
+    else
+        call l:server.textDocument_completion(l:buf_nr, line('.') - 1, col('.') - 1, 1, '')
+    endif
     redraws
 endfunction
 
@@ -399,7 +441,7 @@ function! lsc#textDocument_hover() abort
     if !lsc#capabilities#hover(l:server.capabilities)
         return
     endif
-    call l:server.textDocument_hover(l:buf_nr, line('.') -1, col('.') -1)
+    call l:server.textDocument_hover(l:buf_nr, line('.') - 1, col('.') - 1)
 endfunction
 
 function! lsc#textDocument_signatureHelp() abort
@@ -416,7 +458,7 @@ function! lsc#textDocument_signatureHelp() abort
         return
     endif
 
-    call l:server.textDocument_signatureHelp(l:buf_nr, line('.') -1, col('.') -1)
+    call l:server.textDocument_signatureHelp(l:buf_nr, line('.') - 1, col('.') - 1)
 endfunction
 
 function! lsc#textDocument_declaration() abort
@@ -424,7 +466,7 @@ function! lsc#textDocument_declaration() abort
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
     if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_declaration(l:buf_nr, line('.') -1, col('.') -1)
+        call l:server.textDocument_declaration(l:buf_nr, line('.') - 1, col('.') - 1)
     endif
 endfunction
 
@@ -438,7 +480,7 @@ function! lsc#textDocument_definition() abort
     if !(lsc#capabilities#definition(l:server.capabilities))
         return
     endif
-    call l:server.textDocument_definition(l:buf_nr, line('.') -1, col('.') -1)
+    call l:server.textDocument_definition(l:buf_nr, line('.') - 1, col('.') - 1)
 endfunction
 
 function! lsc#textDocument_typeDefinition() abort
@@ -449,7 +491,7 @@ function! lsc#textDocument_typeDefinition() abort
         return
     endif
 
-    call l:server.textDocument_typeDefinition(l:buf_nr, line('.') -1, col('.') -1)
+    call l:server.textDocument_typeDefinition(l:buf_nr, line('.') - 1, col('.') - 1)
 endfunction
 
 function! lsc#textDocument_implementation() abort
@@ -457,7 +499,7 @@ function! lsc#textDocument_implementation() abort
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
     if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_implementation(l:buf_nr, line('.') -1, col('.') -1)
+        call l:server.textDocument_implementation(l:buf_nr, line('.') - 1, col('.') - 1)
     endif
 endfunction
 
@@ -471,7 +513,7 @@ function! lsc#textDocument_references() abort
     if !lsc#capabilities#references(l:server.capabilities)
         return
     endif
-    call l:server.textDocument_references(l:buf_nr, line('.') -1, col('.') -1, v:true)
+    call l:server.textDocument_references(l:buf_nr, line('.') - 1, col('.') - 1, v:true)
 endfunction
 
 function! lsc#textDocument_documentHighlight() abort
@@ -484,7 +526,7 @@ function! lsc#textDocument_documentHighlight() abort
     if !lsc#capabilities#documentHighlight(l:server.capabilities)
         return
     endif
-    call l:server.textDocument_documentHighlight(l:buf_nr, line('.') -1, col('.') -1)
+    call l:server.textDocument_documentHighlight(l:buf_nr, line('.') - 1, col('.') - 1)
 endfunction
 
 function! lsc#textDocument_documentSymbol() abort
@@ -678,7 +720,7 @@ function! lsc#textDocument_onTypeFormatting() abort
     if !lsc#capabilities#documentOnTypeFormatting(l:server.capabilities)
         return
     endif
-    call l:server.textDocument_onTypeFormatting(l:buf_nr, line('.') -1, col('.') -1)
+    call l:server.textDocument_onTypeFormatting(l:buf_nr, line('.') - 1, col('.') - 1)
 endfunction
 
 function! lsc#textDocument_rename() abort
@@ -691,7 +733,7 @@ function! lsc#textDocument_rename() abort
     if !lsc#capabilities#rename(l:server.capabilities)
         return
     endif
-    call l:server.textDocument_rename(l:buf_nr, line('.') -1, col('.') -1)
+    call l:server.textDocument_rename(l:buf_nr, line('.') - 1, col('.') - 1)
 endfunction
 
 function! lsc#textDocument_foldingRange() abort
@@ -712,7 +754,7 @@ function! lsc#ccls_caller() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_call(l:buf_nr, line('.') -1, col('.') -1, v:false)
+    call l:server.ccls_call(l:buf_nr, line('.') - 1, col('.') - 1, v:false)
 endfunction
 
 function! lsc#ccls_callee() abort
@@ -722,7 +764,7 @@ function! lsc#ccls_callee() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_call(l:buf_nr, line('.') -1, col('.') -1, v:true)
+    call l:server.ccls_call(l:buf_nr, line('.') - 1, col('.') - 1, v:true)
 endfunction
 " }}}
 
@@ -758,7 +800,7 @@ function! lsc#ccls_inheritance_base() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_inheritance(l:buf_nr, line('.') -1, col('.') -1, v:false)
+    call l:server.ccls_inheritance(l:buf_nr, line('.') - 1, col('.') - 1, v:false)
 endfunction
 
 function! lsc#ccls_inheritance_derived() abort
@@ -768,7 +810,7 @@ function! lsc#ccls_inheritance_derived() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_inheritance(l:buf_nr, line('.') -1, col('.') -1, v:true)
+    call l:server.ccls_inheritance(l:buf_nr, line('.') - 1, col('.') - 1, v:true)
 endfunction
 " }}}
 
@@ -780,7 +822,7 @@ function! lsc#ccls_member_file() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_member(l:buf_nr, line('.') -1, col('.') -1, 1)
+    call l:server.ccls_member(l:buf_nr, line('.') - 1, col('.') - 1, 1)
 endfunction
 function! lsc#ccls_member_type() abort
     let l:buf_nr = bufnr('%')
@@ -789,7 +831,7 @@ function! lsc#ccls_member_type() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_member(l:buf_nr, line('.') -1, col('.') -1, 2)
+    call l:server.ccls_member(l:buf_nr, line('.') - 1, col('.') - 1, 2)
 endfunction
 function! lsc#ccls_member_function() abort
     let l:buf_nr = bufnr('%')
@@ -798,7 +840,7 @@ function! lsc#ccls_member_function() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_member(l:buf_nr, line('.') -1, col('.') -1,  3)
+    call l:server.ccls_member(l:buf_nr, line('.') - 1, col('.') - 1,  3)
 endfunction
 function! lsc#ccls_member_variable() abort
     let l:buf_nr = bufnr('%')
@@ -807,7 +849,7 @@ function! lsc#ccls_member_variable() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_member(l:buf_nr, line('.') -1, col('.') -1, 4)
+    call l:server.ccls_member(l:buf_nr, line('.') - 1, col('.') - 1, 4)
 endfunction
 " }}}
 
@@ -819,7 +861,7 @@ function! lsc#ccls_navigate_down() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_navigate(l:buf_nr, line('.') -1, col('.') -1, 'D')
+    call l:server.ccls_navigate(l:buf_nr, line('.') - 1, col('.') - 1, 'D')
 endfunction
 function! lsc#ccls_navigate_up() abort
     let l:buf_nr = bufnr('%')
@@ -828,7 +870,7 @@ function! lsc#ccls_navigate_up() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_navigate(l:buf_nr, line('.') -1, col('.') -1, 'U')
+    call l:server.ccls_navigate(l:buf_nr, line('.') - 1, col('.') - 1, 'U')
 endfunction
 function! lsc#ccls_navigate_left() abort
     let l:buf_nr = bufnr('%')
@@ -837,7 +879,7 @@ function! lsc#ccls_navigate_left() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_navigate(l:buf_nr, line('.') -1, col('.') -1, 'L')
+    call l:server.ccls_navigate(l:buf_nr, line('.') - 1, col('.') - 1, 'L')
 endfunction
 function! lsc#ccls_navigate_right() abort
     let l:buf_nr = bufnr('%')
@@ -846,7 +888,7 @@ function! lsc#ccls_navigate_right() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_navigate(l:buf_nr, line('.') -1, col('.') -1, 'R')
+    call l:server.ccls_navigate(l:buf_nr, line('.') - 1, col('.') - 1, 'R')
 endfunction
 " }}}
 
@@ -870,7 +912,7 @@ function! lsc#ccls_vars() abort
     if !lsc#client#is_client_instance(l:server)
         return
     endif
-    call l:server.ccls_vars(l:buf_nr, line('.') -1, col('.') -1)
+    call l:server.ccls_vars(l:buf_nr, line('.') - 1, col('.') - 1)
 endfunction
 " }}}
 

@@ -49,6 +49,10 @@ endfunction
 " diagnostics {{{
 let s:diagnostic_ns_id = 0
 
+
+let g:ddlsc_diagnostics_vtext = get(g:, 'ddlsc_diagnostics_virtual_text', 0)
+let g:ddlsc_diagnostics_sign = get(g:, 'ddlsc_diagnostics_virtual_text', 1)
+
 let s:DiagnosticSeverity = {
             \ '0': ['Unknown', 'Error'],
             \ '1': ['Error', 'Error'],
@@ -72,7 +76,7 @@ function! s:split_range(range)
     return l:list
 endfunction
 
-function! lsc#diagnostics#handle_diagnostics(fh, diagnostics) abort
+function! lsc#diagnostics#handle_diagnostics(fh) abort
     if s:diagnostic_ns_id == 0
         let s:diagnostic_ns_id = nvim_create_namespace('ddlsc_diagnostic')
         call s:sign_define()
@@ -81,12 +85,13 @@ function! lsc#diagnostics#handle_diagnostics(fh, diagnostics) abort
         call s:sign_unplace(a:fh._buf)
     endif
 
-    if empty(a:diagnostics)
+    let l:diagnostics = deepcopy(get(a:fh, '_diagnostics'))
+    if empty(l:diagnostics)
         return
     endif
 
     let l:dict = {}
-    for l:diag in a:diagnostics
+    for l:diag in l:diagnostics
         let l:line = l:diag['range']['start']['line']
         let l:dict[l:line] = add(get(l:dict, l:line, []), l:diag)
     endfor
@@ -106,10 +111,13 @@ function! lsc#diagnostics#handle_diagnostics(fh, diagnostics) abort
                         \ ]
                         \ )
         endfor
-
-        call a:fh.set_virtual_text(s:diagnostic_ns_id, str2nr(l:line), l:chunks)
+        if g:ddlsc_diagnostics_vtext
+            call a:fh.set_virtual_text(s:diagnostic_ns_id, str2nr(l:line), l:chunks)
+        endif
         " TODO: Get the highest severity
-        call s:sign_place(a:fh._buf, [[str2nr(line), 'ddlsc_error']])
+        if g:ddlsc_diagnostics_sign
+            call s:sign_place(a:fh._buf, [[str2nr(line), 'ddlsc_error']])
+        endif
     endfor
 endfunction
 

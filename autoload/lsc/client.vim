@@ -82,15 +82,24 @@ function s:client.response_handler(response)
         if has_key(self._request_hooks, l:request_id)
             call lsc#log#verbose({'dir': 'S->C', 'response': a:response})
             try
-                call self._request_hooks[l:request_id](a:response)
+                if has_key(a:response, 'result')
+                    call self._request_hooks[l:request_id](a:response)
+                else
+                    call lsc#log#log({'dir': 'S->C', 'response ERROR': a:response})
+                    echom printf('ERROR!!!: %s', json_encode({
+                                \ 'id': l:request_id,
+                                \ 'exception': v:exception
+                                \ }))
+                endif
             catch /.*/
                 echom printf('EXCEPTION!!!: %s', json_encode({
                             \ 'id': l:request_id,
                             \ 'exception': v:exception
                             \ }))
-                call lsc#log#log({'dir': 'S->C', 'response ERROR': a:response})
+
+            finally
+                call remove(self._request_hooks, l:request_id)
             endtry
-            call remove(self._request_hooks, l:request_id)
         else
             call lsc#log#verbose({'dir': 'S->C', 'response IGNORED': a:response})
         endif
@@ -609,6 +618,15 @@ function! s:client.textDocument_didSave(buf) abort
     if get(self._settings, 'auto_documentlink') == 1
         call self.textDocument_documentLink(a:buf)
     endif
+
+    let l:uri = lsc#utils#get_buffer_uri(a:buf)
+    if empty(l:uri)
+        return
+    endif
+    let l:fh = self._context._file_handlers[l:uri]
+
+    call lsc#diagnostics#handle_diagnostics(l:fh)
+    call self.textDocument_codeAction_all(a:buf)
 endfunction
 " }}}
 " didClose : working, need more control {{{
@@ -658,15 +676,12 @@ function! s:client.handle_textDocument_publishDiagnostics(notification)
 
     if l:buf > 0
         let l:fh = self._context._file_handlers[l:uri]
-        call assert_equal(l:buf, l:fh._buf)
-        let l:fh._diagnostics = sort(deepcopy(l:diagnostics),
+        let l:fh._diagnostics = sort(l:diagnostics,
                     \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
-        call lsc#diagnostics#handle_diagnostics(l:fh, l:diagnostics)
-        call self.textDocument_codeAction_all(l:buf)
     elseif !empty(l:diagnostics)
         let l:fh = lsc#file#new(l:uri)
         let self._context._file_handlers[l:uri] = l:fh
-        let l:fh._diagnostics = sort(deepcopy(l:diagnostics),
+        let l:fh._diagnostics = sort(l:diagnostics,
                     \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
     endif
 
@@ -759,14 +774,13 @@ function! s:client.textDocument_completion(buf, line, character, kind, trigger) 
         return
     endif
 
-    let l:trigger = a:trigger[-1]
-    if a:kind == 2 && index(lsc#capabilities#completion_triggerCharacters(self.capabilities), l:trigger) < 0
+    if a:kind == 2 && index(lsc#capabilities#completion_triggerCharacters(self.capabilities), a:trigger) < 0
         return
     endif
 
     let l:context = {'triggerKind': a:kind}
     if a:kind == 2
-        let l:context['triggerCharacter'] = l:trigger
+        let l:context['triggerCharacter'] = a:trigger
     endif
 
     call self.textDocument_didChange(a:buf)
@@ -837,11 +851,6 @@ function! s:client.textDocument_signatureHelp(buf, line, character) abort
     if !lsc#capabilities#signatureHelp(self.capabilities)
         return
     endif
-
-    " let l:trigger = a:trigger
-    " if index(lsc#capabilities#signatureHelp_triggerCharacters(self.capabilities), l:trigger) < 0
-        " return
-    " endif
 
     call self.textDocument_didChange(a:buf)
     call self.send_request(
@@ -1197,6 +1206,9 @@ endfunction
 " codeLens : done {{{
 function! s:client.handle_textDocument_codeLens(buf, response) abort
     let l:codelenses = get(a:response, 'result')
+    if empty(l:codelenses)
+        return
+    endif
     let l:uri = lsc#utils#get_buffer_uri(a:buf)
     if empty(l:uri)
         return
@@ -1262,7 +1274,10 @@ endfunction
 " }}}
 " documentLink : done {{{
 function! s:client.handle_textDocument_documentLink(buf, response) abort
-    let l:doclinks = a:response.result
+    let l:doclinks = get(a:response, 'result')
+    if empty(l:doclinks)
+        return
+    endif
 
     let l:uri = lsc#utils#get_buffer_uri(a:buf)
     if empty(l:uri)
@@ -1428,6 +1443,8 @@ endfunction
 " }}}
 " onTypeFormatting {{{
 function! s:client.handle_textDocument_onTypeFormatting(buf, response) abort
+    call self.handle_textDocument_formatting(a:buf, a:response)
+    " TODO(Richard): set the cursor!!!
 endfunction
 function! s:client.textDocument_onTypeFormatting(buf, line, character) abort
     if !self.initialized()
@@ -1455,7 +1472,7 @@ function! s:client.textDocument_onTypeFormatting(buf, line, character) abort
                 \         },
                 \     }
                 \ },
-                \ {response -> self.handle_textDocument_formatting(a:buf, response)})
+                \ {response -> self.handle_textDocument_onTypeFormatting(a:buf, response)})
 endfunction
 " }}}
 " rename : done {{{

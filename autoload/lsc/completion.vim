@@ -105,14 +105,17 @@ function! lsc#completion#handle_completion(CompletionList) abort
     let l:start = l:items[0].textEdit.range.start.character + 1
 
     call map(l:items, {_, item -> s:build_complete_item(item)})
+
+    setlocal completeopt=menuone,noinsert,noselect,preview
     call complete(l:start, l:items)
 endfunction
 
 function! s:handle_snippet(item) abort
-    let l:user_data = json_decode(get(a:item, 'user_data'))
-    if empty(l:user_data)
+    echom printf('AAAAAAAAAAAAAAAAAAAA: %s', json_encode(a:item))
+    if empty(a:item)
         return
     endif
+    let l:user_data = json_decode(get(a:item, 'user_data'))
     call UltiSnips#Anon(l:user_data[1], l:user_data[0], '', 'i')
 endfunction
 

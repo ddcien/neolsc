@@ -148,4 +148,13 @@ nnoremap <plug>(lsc-navigate-right) :<c-u>call lsc#ccls_navigate_right()<cr>
 nnoremap <plug>(lsc-reload) :<c-u>call lsc#ccls_reload()<cr>
 nnoremap <plug>(lsc-vars) :<c-u>call lsc#ccls_vars()<cr>
 
+inoremap <silent> <expr> <Plug>(lsc-complete) lsc#textDocument_completion()
 
+
+let s:key = '<TAB>'
+exe 'inoremap <expr>' . s:key . ' pumvisible() ? "\<C-n>" : "\' . s:key .'"'
+
+let s:key = '<enter>'
+exe 'inoremap <expr>' . s:key . ' pumvisible() ? "\<C-y>" : "\' . s:key .'"'
+
+inoremap <c-space> <Plug>(lsc-complete)
