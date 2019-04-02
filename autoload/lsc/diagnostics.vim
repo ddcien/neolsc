@@ -78,7 +78,7 @@ function! lsc#diagnostics#handle_diagnostics(fh, diagnostics) abort
         call s:sign_define()
     else
         call a:fh.set_virtual_text(s:diagnostic_ns_id, -1, [])
-        sign_unplace(a:fh._buf)
+        call s:sign_unplace(a:fh._buf)
     endif
 
     if empty(a:diagnostics)

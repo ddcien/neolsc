@@ -114,6 +114,7 @@ function! s:register_events() abort
         autocmd!
         autocmd BufReadPost * if has_key(s:servers_whitelist, &filetype) | call s:on_text_document_did_open() | endif
         autocmd InsertLeave,TextChanged,TextChangedP * if has_key(s:servers_whitelist, &filetype) | call s:on_text_document_did_change() | endif
+        autocmd BufWritePre * if has_key(s:servers_whitelist, &filetype) |  call s:on_text_document_did_will_save() | endif
         autocmd BufWritePost * if has_key(s:servers_whitelist, &filetype) |  call s:on_text_document_did_save() | endif
         autocmd BufUnload * if has_key(s:servers_whitelist, &filetype) | call s:on_text_document_did_close() | endif
         autocmd CursorHold * if has_key(s:servers_whitelist, &filetype) | call lsc#textDocument_documentHighlight() | endif
@@ -199,10 +200,14 @@ function! lsc#workspace_symbol() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        let l:query = input('query>')
-        call l:server.workspace_symbol(l:query)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#workspaceSymbol(l:server.capabilities)
+        return
+    endif
+    let l:query = input('query >', expand('<cword>'))
+    call l:server.workspace_symbol(l:query)
 endfunction
 
 function! lsc#workspace_executeCommand(command, arguments) abort
@@ -244,9 +249,13 @@ function! s:on_text_document_did_save() abort
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     call lsc#log#verbose({'dir': 'C->S', 'didSave': {'buf_nr': l:buf_nr, 'buf_name': bufname(l:buf_nr), 'ft': l:buf_ft}})
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_didSave(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#TextDocumentSync_save(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_didSave(l:buf_nr)
 endfunction
 
 function! s:on_text_document_did_close() abort
@@ -254,29 +263,40 @@ function! s:on_text_document_did_close() abort
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
 
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_didClose(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#TextDocumentSync_openClose(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_didClose(l:buf_nr)
 endfunction
 
 
-function! lsc#textDocument_willSave(reason) abort
+function! s:on_text_document_did_will_save() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_willSave(l:buf_nr, a:reason)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#TextDocumentSync_willSave(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_willSave(l:buf_nr, 1)
 endfunction
 
 function! lsc#textDocument_willSaveWaitUntil() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        "TODO
-        call l:server.textDocument_willSaveWaitUntil(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#TextDocumentSync_willSaveWaitUntil(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_willSaveWaitUntil(l:buf_nr)
 endfunction
 " }}}
 
@@ -289,18 +309,21 @@ function! lsc#complete(findstart, base) abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
+
     if !lsc#client#is_client_instance(l:server)
+        return []
+    endif
+    if !lsc#capabilities#completion(l:server.capabilities)
         return []
     endif
 
     let l:char = s:get_last_char()
 
     call l:server.textDocument_didChange(l:buf_nr)
-
-    if index(l:server.capabilities.completionProvider.triggerCharacters, l:char) >= 0
-        call l:server.textDocument_completion(l:buf_nr, line('.') - 1, col('.') - 1, 2, l:char)
-    else
+    if index(lsc#capabilities#completion_triggerCharacters(l:server.capabilities), l:char) < 0
         call l:server.textDocument_completion(l:buf_nr, line('.') - 1, col('.') - 1, 1, '')
+    else
+        call l:server.textDocument_completion(l:buf_nr, line('.') - 1, col('.') - 1, 2, l:char)
     endif
     redraws
     return []
@@ -350,28 +373,50 @@ function! lsc#textDocument_completion(kind, string) abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_didChange(l:buf_nr)
-        call l:server.textDocument_completion(l:buf_nr, line('.') -1, col('.') -1, a:kind, a:string)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#completion(l:server.capabilities)
+        return
+    endif
+
+    if a:kind == 2 && index(lsc#capabilities#completion_triggerCharacters(l:server.capabilities), a:string) < 0
+        return
+    endif
+
+    call l:server.textDocument_didChange(l:buf_nr)
+    call l:server.textDocument_completion(l:buf_nr, line('.') -1, col('.') -1, a:kind, a:string)
+    redraws
 endfunction
 
 function! lsc#textDocument_hover() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_hover(l:buf_nr, line('.') -1, col('.') -1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#hover(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_hover(l:buf_nr, line('.') -1, col('.') -1)
 endfunction
 
 function! lsc#textDocument_signatureHelp() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_signatureHelp(l:buf_nr, line('.') -1, col('.') -1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#signatureHelp(l:server.capabilities)
+        return
+    endif
+    if index(lsc#capabilities#signatureHelp_triggerCharacters(l:server.capabilities), '}') < 0
+        return
+    endif
+
+    call l:server.textDocument_signatureHelp(l:buf_nr, line('.') -1, col('.') -1)
 endfunction
 
 function! lsc#textDocument_declaration() abort
@@ -387,18 +432,24 @@ function! lsc#textDocument_definition() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_definition(l:buf_nr, line('.') -1, col('.') -1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !(lsc#capabilities#definition(l:server.capabilities))
+        return
+    endif
+    call l:server.textDocument_definition(l:buf_nr, line('.') -1, col('.') -1)
 endfunction
 
 function! lsc#textDocument_typeDefinition() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_typeDefinition(l:buf_nr, line('.') -1, col('.') -1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+
+    call l:server.textDocument_typeDefinition(l:buf_nr, line('.') -1, col('.') -1)
 endfunction
 
 function! lsc#textDocument_implementation() abort
@@ -414,63 +465,88 @@ function! lsc#textDocument_references() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_references(l:buf_nr, line('.') -1, col('.') -1, v:true)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#references(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_references(l:buf_nr, line('.') -1, col('.') -1, v:true)
 endfunction
 
 function! lsc#textDocument_documentHighlight() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_documentHighlight(l:buf_nr, line('.') -1, col('.') -1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#documentHighlight(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_documentHighlight(l:buf_nr, line('.') -1, col('.') -1)
 endfunction
 
 function! lsc#textDocument_documentSymbol() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_documentSymbol(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#documentSymbol(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_documentSymbol(l:buf_nr)
 endfunction
 
 function! lsc#textDocument_codeAction() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_codeAction(l:buf_nr, line('.') -1, col('.') -1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#codeAction(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_codeAction(l:buf_nr, line('.') -1, col('.') -1)
 endfunction
 
 function! lsc#textDocument_codeLens() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_codeLens(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#codeLens(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_codeLens(l:buf_nr)
 endfunction
 
 function! lsc#textDocument_documentLink() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_documentLink(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#documentLink(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_documentLink(l:buf_nr)
 endfunction
 
 function! lsc#textDocument_documentColor() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_documentColor(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    call l:server.textDocument_documentColor(l:buf_nr)
 endfunction
 
 function! lsc#textDocument_colorPresentation(color, range) abort
@@ -486,51 +562,67 @@ function! lsc#textDocument_formatting() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_formatting(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#documentFormatting(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_formatting(l:buf_nr)
 endfunction
 
 function! lsc#textDocument_rangeFormatting() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        let [l:start_lnum, l:start_col, l:end_lnum, l:end_col] = s:get_visual_selection_pos()
-        let l:range = {
-                    \    'start': { 'line': l:start_lnum - 1, 'character': l:start_col - 1 },
-                    \    'end': { 'line': l:end_lnum - 1, 'character': l:end_col - 1 },
-                    \ }
-
-        call l:server.textDocument_rangeFormatting(l:buf_nr, l:range)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
 
+    if !lsc#capabilities#documentRangeFormatting(l:server.capabilities)
+        return
+    endif
+    let [l:start_lnum, l:start_col, l:end_lnum, l:end_col] = s:get_visual_selection_pos()
+    let l:range = {
+                \    'start': { 'line': l:start_lnum - 1, 'character': l:start_col - 1 },
+                \    'end': { 'line': l:end_lnum - 1, 'character': l:end_col - 1 },
+                \ }
+    call l:server.textDocument_rangeFormatting(l:buf_nr, l:range)
 endfunction
 
 function! lsc#textDocument_onTypeFormatting() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_onTypeFormatting(l:buf_nr, line('.') -1, col('.') -1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#documentOnTypeFormatting(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_onTypeFormatting(l:buf_nr, line('.') -1, col('.') -1)
 endfunction
 
 function! lsc#textDocument_rename() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_rename(l:buf_nr, line('.') -1, col('.') -1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    if !lsc#capabilities#rename(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_rename(l:buf_nr, line('.') -1, col('.') -1)
 endfunction
 
 function! lsc#textDocument_foldingRange() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_foldingRange(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+    call l:server.textDocument_foldingRange(l:buf_nr)
 endfunction
 " }}}

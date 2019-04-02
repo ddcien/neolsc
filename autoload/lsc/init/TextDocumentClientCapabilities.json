@@ -2,7 +2,7 @@
   "synchronization": {
     "dynamicRegistration": true,
     "willSave": true,
-    "willSaveWaitUntil": true,
+    "willSaveWaitUntil": false,
     "didSave": true
   },
   "completion": {

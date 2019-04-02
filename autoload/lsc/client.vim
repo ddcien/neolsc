@@ -7,7 +7,6 @@ let s:client = {
             \     'request_id' : 1,
             \     'data_buf': {'data': '', 'length': -1, 'header_length': -1},
             \     'diagnostics': {},
-            \     'initialized': 0,
             \     '_file_handlers': {},
             \ },
             \ '_notification_hooks': {},
@@ -148,7 +147,7 @@ function! s:client.register_notification_hook(method, hook)
 endfunction
 
 function! s:client.initialized()
-    return self._context.initialized
+    return has_key(self, 'capabilities')
 endfunction
 " }}}
 
@@ -168,7 +167,6 @@ endfunction
 function! s:client.handle_initialize(workspace_settings, buf, response)
     call extend(self, a:response.result)
     call self.send_notification({'method': 'initialized', 'params': {}})
-    let self._context.initialized = 1
     call l:self.register_notification_hook(
                 \ '$/cancelRequest',
                 \ {notification -> self.handle_cancelRequest(notification)}
@@ -263,7 +261,7 @@ endfunction
 " shutdown and exit : done {{{
 function! s:client.handle_shutdown(response)
     call self.send_notification({'method': 'exit'})
-    let self._context.initialized = 0
+    call remove(self, 'capabilities')
 endfunction
 
 function! s:client.shutdown()
@@ -436,7 +434,9 @@ function! s:client.workspace_executeCommand(command, arguments) abort
     if !self.initialized()
         return
     endif
-
+    if index(lsc#capabilities#executeCommand(self.capabilities), a:command) < 0
+        return
+    endif
     call self.send_request({
                 \ 'method': 'workspace/executeCommand',
                 \ 'params': {
@@ -464,6 +464,9 @@ endfunction
 " didOpen : done {{{
 function! s:client.textDocument_didOpen(buf) abort
     if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#TextDocumentSync_openClose(self.capabilities)
         return
     endif
     let l:uri = lsc#utils#get_buffer_uri(a:buf)
@@ -494,7 +497,6 @@ function! s:client.textDocument_didOpen(buf) abort
     if get(self._settings, 'auto_documentlink') > 0
         call self.textDocument_documentLink(a:buf)
     endif
-
 endfunction
 " }}}
 " didChange : done {{{
@@ -502,6 +504,12 @@ function! s:client.textDocument_didChange(buf) abort
     if !self.initialized()
         return
     endif
+
+    " TODO
+    " if !lsc#capabilities#TextDocumentSync_change(self.capabilities)
+        " return
+    " endif
+
     let l:uri = lsc#utils#get_buffer_uri(a:buf)
     if empty(l:uri)
         return
@@ -537,6 +545,9 @@ function! s:client.textDocument_willSave(buf, reason) abort
     if !self.initialized()
         return
     endif
+    if !lsc#capabilities#TextDocumentSync_willSave(self.capabilities)
+        return
+    endif
     call self.send_notification({
                 \ 'method': 'textDocument/willSave',
                 \ 'params': {
@@ -551,54 +562,39 @@ function! s:client.handle_textDocument_willSaveWaitUntil(response) abort
     "TODO(Richard):
 endfunction
 
-function! s:client.textDocument_willSaveWaitUntil(buf, text) abort
+function! s:client.textDocument_willSaveWaitUntil(buf, reason) abort
     if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#TextDocumentSync_willSaveWaitUntil(self.capabilities)
         return
     endif
     call self.send_request({
                 \ 'method': 'textDocument/willSaveWaitUntil',
                 \ 'params': {
                 \     'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
-                \     'text': a:text,
+                \     'reason': a:reason,
                 \ }},
                 \ {response -> self.handle_textDocument_willSaveWaitUntil(response)})
 endfunction
 " }}}
 " didSave done {{{
-function! s:client.get_text_document_save_registration_options()
-    let l:capabilities = get(self, 'capabilities')
-    if !empty(l:capabilities) && has_key(l:capabilities, 'textDocumentSync')
-        if type(l:capabilities['textDocumentSync']) == type({})
-            if  has_key(l:capabilities['textDocumentSync'], 'save')
-                return [1, {
-                            \ 'includeText': has_key(l:capabilities['textDocumentSync']['save'], 'includeText') ? l:capabilities['textDocumentSync']['save']['includeText'] : 0,
-                            \ }]
-            else
-                return [0, { 'includeText': 0 }]
-            endif
-        else
-            return [1, { 'includeText': 0 }]
-        endif
-    endif
-    return [0, { 'includeText': 0 }]
-endfunction
-
 function! s:client.textDocument_didSave(buf) abort
     if !self.initialized()
         return
     endif
-    let l:path = lsc#utils#get_buffer_uri(a:buf)
-    let [l:supports_did_save, l:did_save_options] = self.get_text_document_save_registration_options()
-
-    if !l:supports_did_save
+    if !lsc#capabilities#TextDocumentSync_save(self.capabilities)
         return
     endif
 
+    let l:includeText = lsc#capabilities#TextDocumentSync_save_includeText(self.capabilities)
+
+    let l:path = lsc#utils#get_buffer_uri(a:buf)
     let l:params = {
                 \ 'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
                 \ }
 
-    if l:did_save_options['includeText']
+    if l:includeText
         let l:params['text'] = lsc#lsp#get_textDocumentText(a:buf)
     endif
 
@@ -606,6 +602,7 @@ function! s:client.textDocument_didSave(buf) abort
                 \ 'method': 'textDocument/didSave',
                 \ 'params': l:params
                 \ })
+
     if get(self._settings, 'auto_codeLens') == 1
         call self.textDocument_codeLens(a:buf)
     endif
@@ -617,6 +614,9 @@ endfunction
 " didClose : working, need more control {{{
 function! s:client.textDocument_didClose(buf) abort
     if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#TextDocumentSync_openClose(self.capabilities)
         return
     endif
     let l:path = lsc#utils#get_buffer_uri(a:buf)
@@ -749,14 +749,24 @@ function! s:client.handle_textDocument_completion(response) abort
     call lsc#completion#handle_completion(l:CompletionList)
 endfunction
 
-function! s:client.textDocument_completion(buf, line, character, kind, string) abort
+function! s:client.textDocument_completion(buf, line, character, kind, trigger) abort
     if !self.initialized()
         return
     endif
+    if !lsc#capabilities#completion(self.capabilities)
+        return
+    endif
+
+    let l:trigger = a:trigger[-1]
+    if a:kind == 2 && index(lsc#capabilities#completion_triggerCharacters(self.capabilities), l:trigger) < 0
+        return
+    endif
+
     let l:context = {'triggerKind': a:kind}
     if a:kind == 2
-        let l:context['triggerCharacter'] = a:string
+        let l:context['triggerCharacter'] = l:trigger
     endif
+
     call self.textDocument_didChange(a:buf)
     call self.send_request(
                 \ {
@@ -797,7 +807,7 @@ function! s:client.textDocument_hover(buf, line, character) abort
     if !self.initialized()
         return
     endif
-    if !get(self.capabilities, 'hoverProvider', v:false)
+    if !lsc#capabilities#hover(self.capabilities)
         return
     endif
     call self.textDocument_didChange(a:buf)
@@ -822,6 +832,15 @@ function! s:client.textDocument_signatureHelp(buf, line, character) abort
     if !self.initialized()
         return
     endif
+    if !lsc#capabilities#signatureHelp(self.capabilities)
+        return
+    endif
+
+    " let l:trigger = a:trigger
+    " if index(lsc#capabilities#signatureHelp_triggerCharacters(self.capabilities), l:trigger) < 0
+        " return
+    " endif
+
     call self.textDocument_didChange(a:buf)
     call self.send_request(
                 \ {
@@ -844,7 +863,9 @@ function! s:client.textDocument_declaration(buf, line, character) abort
     if !self.initialized()
         return
     endif
-
+    if !lsc#capabilities#declaration(self.capabilities)
+        return
+    endif
     call self.textDocument_didChange(a:buf)
     call self.send_request(
                 \ {
@@ -866,7 +887,7 @@ function! s:client.textDocument_definition(buf, line, character) abort
     if !self.initialized()
         return
     endif
-    if !get(self.capabilities, 'definitionProvider', v:false)
+    if !lsc#capabilities#definition(self.capabilities)
         return
     endif
 
@@ -891,10 +912,9 @@ function! s:client.textDocument_typeDefinition(buf, line, character) abort
     if !self.initialized()
         return
     endif
-    if !get(self.capabilities, 'typeDefinitionProvider', v:false)
+    if !lsc#capabilities#typeDefinition(self.capabilities)
         return
     endif
-
     call self.textDocument_didChange(a:buf)
     call self.send_request(
                 \ {
@@ -916,10 +936,9 @@ function! s:client.textDocument_implementation(buf, line, character) abort
     if !self.initialized()
         return
     endif
-    if !get(self.capabilities, 'implementationProvider', v:false)
+    if !lsc#capabilities#implementation(self.capabilities)
         return
     endif
-
     call self.textDocument_didChange(a:buf)
     call self.send_request(
                 \ {
@@ -941,7 +960,8 @@ function! s:client.textDocument_references(buf, line, character, incdec) abort
     if !self.initialized()
         return
     endif
-    if !get(self.capabilities, 'referencesProvider', v:false)
+
+    if !lsc#capabilities#references(self.capabilities)
         return
     endif
 
@@ -1007,7 +1027,7 @@ function! s:client.textDocument_documentHighlight(buf, line, character) abort
     if !self.initialized()
         return
     endif
-    if !get(self.capabilities, 'documentHighlightProvider', v:false)
+    if !lsc#capabilities#documentHighlight(self.capabilities)
         return
     endif
 
@@ -1032,7 +1052,7 @@ function! s:client.textDocument_documentSymbol(buf) abort
     if !self.initialized()
         return
     endif
-    if !get(self.capabilities, 'documentSymbolProvider', v:false)
+    if !lsc#capabilities#documentSymbol(self.capabilities)
         return
     endif
 
@@ -1152,20 +1172,15 @@ function! s:client.textDocument_codeAction(buf, line, character) abort
     if !self.initialized()
         return
     endif
-
-    let l:provider = get(self.capabilities, 'codeActionProvider')
-    if empty(l:provider)
+    if !lsc#capabilities#codeAction(self.capabilities)
         return
     endif
-
-    let l:kinds = get(l:provider, 'codeActionKinds')
-    " TODO(Richard): use the kind
 
     let l:params = self.Diagnostics_find(a:buf, a:line, a:character)
     if empty(l:params)
         return
     endif
-
+    let l:params['context']['only'] = lsc#capabilities#codeAction_codeActionKinds(self.capabilities)
     let l:params['range']['start']['character'] = 0
     let l:params['range']['end']['line'] += 1
     let l:params['range']['end']['character'] = 0
@@ -1192,8 +1207,9 @@ function! s:client.handle_textDocument_codeLens(buf, response) abort
                     \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
 
 
-    if !get(self.capabilities['codeLensProvider'], 'resolveProvider')
-        return lsc#codelens#handle_codelens(l:fh, l:codelenses)
+    if !lsc#capabilities#codeLens_resolve(self.capabilities)
+        call lsc#codelens#handle_codelens(l:fh, l:codelenses)
+        return
     endif
 
     let l:ctx = {'ret': [], 'len': len(l:codelenses), 'buf': a:buf}
@@ -1206,8 +1222,7 @@ function! s:client.textDocument_codeLens(buf) abort
     if !self.initialized()
         return
     endif
-
-    if empty(get(self.capabilities, 'codeLensProvider'))
+    if !lsc#capabilities#codeLens(self.capabilities)
         return
     endif
 
@@ -1229,8 +1244,12 @@ function! s:client.handle_textDocument_codeLens_resolve(ctx, response) abort
         return lsc#codelens#handle_codelens(a:ctx.buf, a:ctx.ret)
     endif
 endfunction
+
 function! s:client.textDocument_codeLens_resolve(ctx, codelens) abort
     if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#codeLens_resolve(self.capabilities)
         return
     endif
     call self.send_request(
@@ -1254,16 +1273,12 @@ function! s:client.handle_textDocument_documentLink(buf, response) abort
     let l:fh._documentlinks = sort(deepcopy(l:doclinks),
                     \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
 
-    call lsc#documentlink#handle_documentlink(l:fh, l:doclinks)
-    return
-
-    let l:ctx = {'ret': [], 'len': len(l:doclinks), 'buf': a:buf}
-    call self.textDocument_documentLink_resolve(l:ctx, l:doclinks[0])
-    " TODO(Richard):
-
-    if !get(self.capabilities['documentLinkProvider'], 'resolveProvider')
-        return lsc#documentlink#handle_documentlink(a:buf, l:doclinks)
+    if !lsc#capabilities#documentLink_resolve(self.capabilities)
+        call lsc#documentlink#handle_documentlink(l:fh, l:doclinks)
+        return
     endif
+
+    return
 
     let l:ctx = {'ret': [], 'len': len(l:doclinks), 'buf': a:buf}
     for l:dl in l:doclinks
@@ -1275,11 +1290,9 @@ function! s:client.textDocument_documentLink(buf) abort
     if !self.initialized()
         return
     endif
-
-    if empty(get(self.capabilities, 'documentLinkProvider'))
+    if !lsc#capabilities#documentLink(self.capabilities)
         return
     endif
-
     call self.textDocument_didChange(a:buf)
     call self.send_request(
                 \ {
@@ -1303,6 +1316,9 @@ function! s:client.textDocument_documentLink_resolve(ctx, doclink) abort
     if !self.initialized()
         return
     endif
+    if !lsc#capabilities#documentLink_resolve(self.capabilities)
+        return
+    endif
     call self.send_request(
                 \ {
                 \     'method': 'documentLink/resolve',
@@ -1316,6 +1332,9 @@ function! s:client.handle_textDocument_documentColor(buf, response) abort
 endfunction
 function! s:client.textDocument_documentColor(buf) abort
     if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#color(self.capabilities)
         return
     endif
     call self.textDocument_didChange(a:buf)
@@ -1334,6 +1353,9 @@ function! s:client.handle_textDocument_colorPresentation(buf, response) abort
 endfunction
 function! s:client.textDocument_colorPresentation(buf, color, range) abort
     if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#color(self.capabilities)
         return
     endif
     call self.textDocument_didChange(a:buf)
@@ -1362,7 +1384,7 @@ function! s:client.textDocument_formatting(buf) abort
     if !self.initialized()
         return
     endif
-    if !get(self.capabilities, 'documentFormattingProvider', v:false)
+    if !lsc#capabilities#documentFormatting(self.capabilities)
         return
     endif
     call self.textDocument_didChange(a:buf)
@@ -1385,7 +1407,7 @@ function! s:client.textDocument_rangeFormatting(buf, range) abort
     if !self.initialized()
         return
     endif
-    if !get(self.capabilities, 'documentRangeFormattingProvider', v:false)
+    if !lsc#capabilities#documentRangeFormatting(self.capabilities)
         return
     endif
     call self.textDocument_didChange(a:buf)
@@ -1411,11 +1433,13 @@ function! s:client.textDocument_onTypeFormatting(buf, line, character) abort
     if !self.initialized()
         return
     endif
-    let l:provider = get(self.capabilities, 'documentOnTypeFormattingProvider')
-    if empty(l:provider)
+    if !lsc#capabilities#documentOnTypeFormatting(self.capabilities)
         return
     endif
-    let l:trigger = get(l:provider, 'firstTriggerCharacter')
+    let l:trigger = lsc#capabilities#documentOnTypeFormatting_triggerCharacters(self.capabilities)
+    if empty(l:trigger)
+        return
+    endif
 
     call self.textDocument_didChange(a:buf)
     call self.send_request(
@@ -1424,7 +1448,7 @@ function! s:client.textDocument_onTypeFormatting(buf, line, character) abort
                 \     'params': {
                 \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
                 \         'position': lsc#lsp#get_Position(a:line, a:character),
-                \         'ch': l:trigger,
+                \         'ch': l:trigger[0],
                 \         'options': {
                 \             'tabSize': getbufvar(bufnr('%'), '&tabstop'),
                 \             'insertSpaces': getbufvar(bufnr('%'), '&expandtab') ? v:true : v:false,
@@ -1435,6 +1459,15 @@ function! s:client.textDocument_onTypeFormatting(buf, line, character) abort
 endfunction
 " }}}
 " rename : done {{{
+function! s:client.textDocument_raw_rename(params) abort
+    call self.send_request(
+                \ {
+                \     'method': 'textDocument/rename',
+                \     'params': a:params
+                \ },
+                \ {response -> self.handle_textDocument_rename(response)})
+endfunction
+
 function! s:client.handle_textDocument_rename(response) abort
     let l:workspaceedit = get(a:response, 'result')
     if empty(l:workspaceedit)
@@ -1447,18 +1480,14 @@ function! s:client.textDocument_rename(buf, line, character) abort
     if !self.initialized()
         return
     endif
-
-    let l:provider = get(self.capabilities, 'renameProvider', v:false)
-    if empty(l:provider)
+    if !lsc#capabilities#rename(self.capabilities)
         return
     endif
 
-    if type(l:provider) == v:t_dict && !empty(get(l:provider, 'prepareProvider'))
+    if lsc#capabilities#rename_prepare(self.capabilities)
         call self.textDocument_prepareRename(a:buf, a:line, a:character)
         return
     endif
-
-    call self.textDocument_didChange(a:buf)
 
     let l:placeholder = expand('<cword>')
     let l:new_name = input('new name: ', l:placeholder)
@@ -1466,16 +1495,11 @@ function! s:client.textDocument_rename(buf, line, character) abort
     if l:new_name ==# l:placeholder
         return
     endif
-    call self.send_request(
-                \ {
-                \     'method': 'textDocument/rename',
-                \     'params': {
-                \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
-                \         'position': lsc#lsp#get_Position(a:line, a:character),
-                \         'newName': l:new_name,
-                \     }
-                \ },
-                \ {response -> self.handle_textDocument_rename(response)})
+    call textDocument_raw_rename({
+                \ 'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \ 'position': lsc#lsp#get_Position(a:line, a:character),
+                \ 'newName': l:new_name,
+                \ })
 endfunction
 " }}}
 " prepareRename : done {{{
@@ -1512,20 +1536,21 @@ function! s:client.handle_textDocument_prepareRename(buf, response) abort
         return
     endif
 
-    call self.send_request(
-                \ {
-                \     'method': 'textDocument/rename',
-                \     'params': {
-                \         'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
-                \         'position': l:range['start'],
-                \         'newName': l:new_name,
-                \     }
-                \ },
-                \ {response -> self.handle_textDocument_rename(response)})
+    call textDocument_raw_rename({
+                \ 'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \ 'position': l:range['start'],
+                \ 'newName': l:new_name,
+                \ })
 endfunction
 
 
 function! s:client.textDocument_prepareRename(buf, line, character) abort
+    if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#rename_prepare(self.capabilities)
+        return
+    endif
     call self.textDocument_didChange(a:buf)
     call self.send_request(
                 \ {
@@ -1553,6 +1578,9 @@ endfunction
 
 function! s:client.textDocument_foldingRange(buf) abort
     if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#foldingRange(self.capabilities)
         return
     endif
     call self.textDocument_didChange(a:buf)
