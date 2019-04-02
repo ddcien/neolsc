@@ -510,8 +510,59 @@ function! lsc#textDocument_codeAction() abort
     if !lsc#capabilities#codeAction(l:server.capabilities)
         return
     endif
-    call l:server.textDocument_codeAction(l:buf_nr, line('.') -1, col('.') -1)
+    let l:lnum = line('.')
+    let l:range = {
+                \    'start': { 'line': l:lnum - 1, 'character': 0 },
+                \    'end': { 'line': l:lnum, 'character': 0 },
+                \ }
+    call l:server.textDocument_rangeCodeAction(l:buf_nr, l:range)
 endfunction
+
+function! lsc#textDocument_rangeCodeAction() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    if !lsc#capabilities#codeAction(l:server.capabilities)
+        return
+    endif
+
+    let [l:start_lnum, l:start_col, l:end_lnum, l:end_col] = s:get_visual_selection_pos()
+    let l:range = {
+                \    'start': { 'line': l:start_lnum - 1, 'character': l:start_col - 1 },
+                \    'end': { 'line': l:end_lnum - 1, 'character': l:end_col - 1 },
+                \ }
+    call l:server.textDocument_rangeCodeAction(l:buf_nr, l:range)
+endfunction
+
+function! lsc#textDocument_quikFix() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    if !lsc#capabilities#codeAction(l:server.capabilities)
+        return
+    endif
+
+endfunction
+
+function! lsc#textDocument_codeAction_all() abort
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    if !lsc#capabilities#codeAction(l:server.capabilities)
+        return
+    endif
+    call l:server.textDocument_codeAction_all(l:buf_nr)
+endfunction
+
 
 function! lsc#textDocument_codeLens() abort
     let l:buf_nr = bufnr('%')

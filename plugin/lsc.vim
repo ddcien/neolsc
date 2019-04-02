@@ -69,6 +69,7 @@ command! LscWorkspaceSymbol call lsc#workspace_symbol()
 command! LscWorkspaceDiag call lsc#workspace_diagnostics()
 
 command! LscCodeAction call lsc#textDocument_codeAction()
+command! -range LscRangeCodeAction call lsc#textDocument_rangeCodeAction()
 command! LscDeclaration call lsc#textDocument_declaration()
 command! LscDefinition call lsc#textDocument_definition()
 command! LscSymbol call lsc#textDocument_documentSymbol()
@@ -92,6 +93,7 @@ nnoremap <plug>(lsc-workspace-symbol) :<c-u>call lsc#workspace_symbol()<cr>
 nnoremap <plug>(lsc-workspace-diag) :<c-u>call lsc#workspace_diagnostics()<cr>
 
 nnoremap <plug>(lsc-code-action) :<c-u>call lsc#textDocument_codeAction()<cr>
+vnoremap <plug>(lsc-code-action) :call lsc#textDocument_rangeCodeAction()<cr>
 nnoremap <plug>(lsc-declaration) :<c-u>call lsc#textDocument_declaration()<cr>
 nnoremap <plug>(lsc-definition) :<c-u>call lsc#textDocument_definition()<cr>
 nnoremap <plug>(lsc-symbol) :<c-u>call lsc#textDocument_documentSymbol()<cr>

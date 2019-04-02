@@ -662,12 +662,14 @@ function! s:client.handle_textDocument_publishDiagnostics(notification)
         let l:fh._diagnostics = sort(deepcopy(l:diagnostics),
                     \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
         call lsc#diagnostics#handle_diagnostics(l:fh, l:diagnostics)
+        call self.textDocument_codeAction_all(l:buf)
     elseif !empty(l:diagnostics)
         let l:fh = lsc#file#new(l:uri)
         let self._context._file_handlers[l:uri] = l:fh
         let l:fh._diagnostics = sort(deepcopy(l:diagnostics),
                     \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
     endif
+
 endfunction
 
 function! s:client.Diagnostics_next(buf, line, character) abort
@@ -1069,10 +1071,6 @@ endfunction
 " }}}
 " codeAction done (need refactoring) {{{
 function! s:client.handle_codeAction(action) abort
-    if has_key(a:action, 'kind')
-        echomsg "KIND: " . a:action['kind']
-    endif
-
     if has_key(a:action, 'edit')
         call lsc#workspaceedit#handle_WorkspaceEdit(self, a:action['edit'])
     endif
@@ -1083,7 +1081,7 @@ function! s:client.handle_codeAction(action) abort
 endfunction
 
 function! s:client.handle_codeActionItem(item) abort
-    if has_key(a:item, 'command')
+    if has_key(a:item, 'command') && type(a:item['command']) == v:t_string
         call self.workspace_executeCommand(a:item['command'], a:item['arguments'])
     else
         call self.handle_codeAction(a:item)
@@ -1116,59 +1114,12 @@ function! s:client.handle_textDocument_codeAction(response) abort
     call self.handle_codeActionItem(l:items[l:idx - 1])
 endfunction
 
-function! s:diagnostics_filter(diagnostics, line)
-    if empty(a:diagnostics)
-        return
-    endif
-
-    let l:idx = 0
-    let l:diags = []
-    let l:len = len(a:diagnostics)
-    let l:end = {'line': 0, 'character': 0}
-
-
-    while l:idx < l:len && a:diagnostics[l:idx]['range']['end']['line'] < a:line
-        let l:idx += 1
-    endwhile
-
-
-    while l:idx < l:len && a:diagnostics[l:idx]['range']['start']['line'] <= a:line
-        if s:position_compare(l:end, a:diagnostics[l:idx]['range']['end']) < 0
-            let l:end = deepcopy(a:diagnostics[l:idx]['range']['end'])
-        endif
-        call add(l:diags, deepcopy(a:diagnostics[l:idx]))
-        let l:idx += 1
-    endwhile
-
-    if empty(l:diags)
-        return
-    endif
-
-    return {
-                \ 'range': {'start': l:diags[0]['range']['start'], 'end': l:end},
-                \ 'context': {
-                \     'diagnostics': l:diags,
-                \     }
-                \ }
+" {{{
+function! s:range_contains(big_range, small_range) abort
+    return s:position_compare(a:big_range['start'], a:small_range['start']) <= 0 && s:position_compare(a:big_range['end'], a:small_range['end']) >= 0
 endfunction
 
-function! s:client.Diagnostics_find(buf, line, character)
-    let l:uri = lsc#utils#get_buffer_uri(a:buf)
-    let l:fh = self._context._file_handlers[l:uri]
-    let l:diagnostics = get(l:fh, '_diagnostics')
-    if empty(l:diagnostics)
-        return
-    endif
-
-    let l:ctx = s:diagnostics_filter(l:diagnostics, a:line)
-    if empty(l:ctx)
-        return
-    endif
-    let l:ctx['textDocument'] = lsc#lsp#get_TextDocumentIdentifier(a:buf)
-    return l:ctx
-endfunction
-
-function! s:client.textDocument_codeAction(buf, line, character) abort
+function! s:client.textDocument_rangeCodeAction(buf, range) abort
     if !self.initialized()
         return
     endif
@@ -1176,16 +1127,34 @@ function! s:client.textDocument_codeAction(buf, line, character) abort
         return
     endif
 
-    let l:params = self.Diagnostics_find(a:buf, a:line, a:character)
-    if empty(l:params)
+    let l:uri = lsc#utils#get_buffer_uri(a:buf)
+    let l:fh = self._context._file_handlers[l:uri]
+    let l:diagnostics = get(l:fh, '_diagnostics')
+    if empty(l:diagnostics)
         return
     endif
-    let l:params['context']['only'] = lsc#capabilities#codeAction_codeActionKinds(self.capabilities)
-    let l:params['range']['start']['character'] = 0
-    let l:params['range']['end']['line'] += 1
-    let l:params['range']['end']['character'] = 0
+
+    let l:diags = []
+
+    for l:diag in l:diagnostics
+        if s:range_contains(a:range, l:diag['range'])
+            call add(l:diags, l:diag)
+        endif
+    endfor
+
+    if empty(l:diags)
+        return
+    endif
 
     call self.textDocument_didChange(a:buf)
+    let l:params =  {
+                \ 'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \ 'range': a:range,
+                \ 'context': {
+                \     'diagnostics': l:diags,
+                \     'only': lsc#capabilities#codeAction_codeActionKinds(self.capabilities)
+                \     }
+                \ }
     call self.send_request(
                 \ {
                 \     'method': 'textDocument/codeAction',
@@ -1193,6 +1162,65 @@ function! s:client.textDocument_codeAction(buf, line, character) abort
                 \ },
                 \ {response -> self.handle_textDocument_codeAction(response)})
 endfunction
+" }}}
+
+" codeAction_all {{{
+function! s:client.handle_textDocument_codeAction_all(buf, response) abort
+    let l:items = get(a:response, 'result')
+    if empty(l:items)
+        return
+    endif
+
+    let l:uri = lsc#utils#get_buffer_uri(a:buf)
+    let l:fh = self._context._file_handlers[l:uri]
+
+    let l:actlist = []
+    for l:item in l:items
+        if type(get(l:item, 'command', {})) == v:t_string
+            call add(l:actlist, {'title': l:item['title'], 'command': l:item})
+        else
+            call add(l:actlist, l:item)
+        endif
+    endfor
+    let l:fh['_code_actions'] = l:actlist
+endfunction
+
+function! s:client.textDocument_codeAction_all(buf) abort
+    if !self.initialized()
+        return
+    endif
+    if !lsc#capabilities#codeAction(self.capabilities)
+        return
+    endif
+
+    let l:uri = lsc#utils#get_buffer_uri(a:buf)
+    let l:fh = self._context._file_handlers[l:uri]
+    let l:diagnostics = get(l:fh, '_diagnostics')
+    if empty(l:diagnostics)
+        return
+    endif
+
+    call self.textDocument_didChange(a:buf)
+    let l:params =  {
+                \ 'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
+                \ 'range': {
+                \     'start': {'line': 0, 'character': 0},
+                \     'end': {'line': line('$'), 'character': 0},
+                \ },
+                \ 'context': {
+                \     'diagnostics': l:diagnostics,
+                \     'only': lsc#capabilities#codeAction_codeActionKinds(self.capabilities)
+                \     }
+                \ }
+    call self.send_request(
+                \ {
+                \     'method': 'textDocument/codeAction',
+                \     'params': l:params,
+                \ },
+                \ {response -> self.handle_textDocument_codeAction_all(a:buf, response)})
+endfunction
+" }}}
+
 " }}}
 " codeLens : done {{{
 function! s:client.handle_textDocument_codeLens(buf, response) abort
