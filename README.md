@@ -30,7 +30,7 @@
 
  - [ ]: S->C->S : 'workspace/workspaceFolders'
  - [ ]: C->S    : 'workspace/didChangeWorkspaceFolders'
- - [ ]: C->S    : 'workspace/didChangeConfiguration'
+ - [x]: C->S    : 'workspace/didChangeConfiguration'
  - [ ]: S->C->S : 'workspace/configuration'
  - [ ]: C->S    : 'workspace/didChangeWatchedFiles'
  - [x]: C->S->C : 'workspace/symbol'
@@ -41,7 +41,7 @@
 
  - [x]: C->S    : 'textDocument/didOpen'
  - [x]: C->S    : 'textDocument/didChange'
- - [ ]: C->S    : 'textDocument/willSave'
+ - [x]: C->S    : 'textDocument/willSave'
  - [ ]: C->S->C : 'textDocument/willSaveWaitUntil'
  - [x]: C->S    : 'textDocument/didSave'
  - [x]: C->S    : 'textDocument/didClose'
@@ -74,8 +74,22 @@
  - [x]: C->S->C : 'textDocument/rangeFormatting'
  - [ ]: C->S->C : 'textDocument/onTypeFormatting'
  - [x]: C->S->C : 'textDocument/rename'
- - [ ]: C->S->C : 'textDocument/prepareRename'
+ - [x]: C->S->C : 'textDocument/prepareRename'
  - [x]: C->S->C : 'textDocument/foldingRange'
+
+
+### CCLS Features
+ - [x]: S->C : "$ccls/publishSkippedRanges"
+ - [x]: S->C : "$ccls/publishSemanticHighlight"
+
+ - [x]: C->S->C : '$ccls/call'
+ - [ ]: C->S->C : '$ccls/fileInfo'
+ - [ ]: C->S->C : '$ccls/info'
+ - [x]: C->S->C : '$ccls/inheritance'
+ - [x]: C->S->C : '$ccls/member'
+ - [x]: C->S->C : '$ccls/navigate'
+ - [x]: C->S->C : '$ccls/reload'
+ - [x]: C->S->C : '$ccls/vars'
 
 ### BUG
 
@@ -85,8 +99,5 @@
 
 1. Auto trigger completion, signatureHelp, and onTypeFormatting function.
 2. Use floating window for hover and some other information.
-3. Other ccls/cquery functions.
-4. Complete semantic coloring.
 5. Export commands and key bindings.
 6. Export custom settings.
-7. Finely control the requests.

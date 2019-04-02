@@ -89,6 +89,24 @@ command! LscPrevDiag call lsc#Diagnostics_prev()
 command! LscDiag call lsc#textDocument_diagnostics()
 command! -nargs=0 LscStatus echomsg lsc#status()
 
+command! LscCaller call lsc#ccls_caller()
+command! LscCallee call lsc#ccls_callee()
+command! LscFileInfo call lsc#ccls_fileInfo()
+command! LscInfo call lsc#ccls_info()
+command! LscInheritanceBase call lsc#ccls_inheritance_base()
+command! LscInheritanceDerived call lsc#ccls_inheritance_derived()
+command! LscMemberFile call lsc#ccls_member_file()
+command! LscMemberType call lsc#ccls_member_type()
+command! LscMemberFunction call lsc#ccls_member_function()
+command! LscMemberVariable call lsc#ccls_member_variable()
+command! LscMavigateDown call lsc#ccls_navigate_down()
+command! LscNavigateUp call lsc#ccls_navigate_up()
+command! LscNavigateLeft call lsc#ccls_navigate_left()
+command! LscNavigateRight call lsc#ccls_navigate_right()
+command! LscReload call lsc#ccls_reload()
+command! LscVars call lsc#ccls_vars()
+
+
 nnoremap <plug>(lsc-workspace-symbol) :<c-u>call lsc#workspace_symbol()<cr>
 nnoremap <plug>(lsc-workspace-diag) :<c-u>call lsc#workspace_diagnostics()<cr>
 
@@ -109,8 +127,25 @@ nnoremap <plug>(lsc-link) :<c-u>call lsc#textDocument_documentLink()<cr>
 nnoremap <plug>(lsc-codelens) :<c-u>call lsc#textDocument_codeLens()<cr>
 nnoremap <plug>(lsc-highlight) :<c-u>call lsc#textDocument_documentHighlight()<cr>
 nnoremap <plug>(lsc-next-diag) :<c-u>call lsc#Diagnostics_next()<cr>
-nnoremap <plug>(lsc_prev-diag) :<c-u>call lsc#Diagnostics_prev()<cr>
+nnoremap <plug>(lsc-prev-diag) :<c-u>call lsc#Diagnostics_prev()<cr>
 nnoremap <plug>(lsc-diag) :<c-u>call lsc#textDocument_diagnostics()<cr>
 nnoremap <plug>(lsc-status) :<c-u>call lsc#status()<cr>
+
+nnoremap <plug>(lsc-caller) :<c-u>call lsc#ccls_caller()<cr>
+nnoremap <plug>(lsc-callee) :<c-u>call lsc#ccls_callee()<cr>
+nnoremap <plug>(lsc-file-nfo) :<c-u>call lsc#ccls_fileInfo()<cr>
+nnoremap <plug>(lsc-info) :<c-u>call lsc#ccls_info()<cr>
+nnoremap <plug>(lsc-inheritance-base) :<c-u>call lsc#ccls_inheritance_base()<cr>
+nnoremap <plug>(lsc-inheritance-derived) :<c-u>call lsc#ccls_inheritance_derived()<cr>
+nnoremap <plug>(lsc-member-file) :<c-u>call lsc#ccls_member_file()<cr>
+nnoremap <plug>(lsc-member-type) :<c-u>call lsc#ccls_member_type()<cr>
+nnoremap <plug>(lsc-member-function) :<c-u>call lsc#ccls_member_function()<cr>
+nnoremap <plug>(lsc-member-variable) :<c-u>call lsc#ccls_member_variable()<cr>
+nnoremap <plug>(lsc-navigate-down) :<c-u>call lsc#ccls_navigate_down()<cr>
+nnoremap <plug>(lsc-navigate-up) :<c-u>call lsc#ccls_navigate_up()<cr>
+nnoremap <plug>(lsc-navigate-left) :<c-u>call lsc#ccls_navigate_left()<cr>
+nnoremap <plug>(lsc-navigate-right) :<c-u>call lsc#ccls_navigate_right()<cr>
+nnoremap <plug>(lsc-reload) :<c-u>call lsc#ccls_reload()<cr>
+nnoremap <plug>(lsc-vars) :<c-u>call lsc#ccls_vars()<cr>
 
 
