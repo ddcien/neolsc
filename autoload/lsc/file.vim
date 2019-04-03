@@ -28,9 +28,6 @@ function s:file_handler.alloc(buf)
 
     let l:fh._diagnostics = [[], {}]
     let l:fh._code_actions = []
-    let l:fh._codelenses = []
-    let l:fh._highlights = []
-    let l:fh._documentlinks = []
     let l:fh._vtext = {}
 
     return l:fh
