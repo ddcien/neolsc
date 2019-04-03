@@ -87,7 +87,7 @@ function! s:show_hover_float_window(ft, lines) abort
     let l:width = 0
     for l:line in a:lines
         if len(l:line) > l:width
-            let l:width = len(l:line)
+            let l:width = strdisplaywidth(l:line)
         endif
     endfor
     call nvim_buf_set_option(s:hover_buf, 'modifiable', v:true)
