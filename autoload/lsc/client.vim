@@ -503,15 +503,27 @@ function! s:client.textDocument_didOpen(buf) abort
 endfunction
 " }}}
 " didChange : done {{{
+function! s:client.compute_text_changes(buf) abort
+    let l:sync_kind = lsc#capabilities#TextDocumentSync_change(self.capabilities)
+
+    if l:sync_kind == 0
+        return v:null
+    endif
+
+    if l:sync_kind == 1
+        return [{'text': join(nvim_buf_get_lines(a:buf, 0, -1, v:true), "\n")}]
+    endif
+
+    if l:sync_kind == 2
+        " TODO(Richard): compute_text_changes
+        return [{'text': join(nvim_buf_get_lines(a:buf, 0, -1, v:true), "\n")}]
+    endif
+endfunction
+
 function! s:client.textDocument_didChange(buf) abort
     if !self.initialized()
         return
     endif
-
-    " TODO
-    " if !lsc#capabilities#TextDocumentSync_change(self.capabilities)
-        " return
-    " endif
 
     let l:uri = lsc#utils#get_buffer_uri(a:buf)
     if empty(l:uri)
@@ -531,7 +543,7 @@ function! s:client.textDocument_didChange(buf) abort
                 \ 'method': 'textDocument/didChange',
                 \ 'params': {
                 \     'textDocument': lsc#lsp#get_VersionedTextDocumentIdentifier(a:buf, l:fh._ver),
-                \     'contentChanges': [{'text': lsc#lsp#get_textDocumentText(a:buf)}],
+                \     'contentChanges': self.compute_text_changes(a:buf),
                 \ }
                 \ })
 endfunction
@@ -632,6 +644,7 @@ function! s:client.handle_textDocument_publishDiagnostics(notification)
     if l:buf > 0
         let l:fh = self._context._file_handlers[l:uri]
         call lsc#diagnostics#update(l:fh, l:diagnostics)
+        call self.textDocument_codeAction_all(l:buf)
     elseif !empty(l:diagnostics)
         let l:fh = lsc#file#new(l:uri)
         let self._context._file_handlers[l:uri] = l:fh
@@ -890,10 +903,6 @@ function! s:client.handle_textDocument_documentHighlight(buf, response)
         return
     endif
     let l:fh = self._context._file_handlers[l:uri]
-
-    let l:fh._highlights = sort(deepcopy(l:highlights),
-                    \ {d0, d1 -> lsc#utils#position_compare(d0['range']['start'], d1['range']['start'])})
-
     call lsc#highlight#handle_highlight(l:fh, l:highlights)
 endfunction
 
@@ -998,16 +1007,18 @@ function! s:client.textDocument_rangeCodeAction(buf, range) abort
 
     let l:uri = lsc#utils#get_buffer_uri(a:buf)
     let l:fh = self._context._file_handlers[l:uri]
-    let l:diagnostics = get(l:fh, '_diagnostics')
+    let l:diagnostics = l:fh._diagnostics[1]
     if empty(l:diagnostics)
         return
     endif
 
     let l:diags = []
+    let l:line_start = a:range['start']['line']
+    let l:line_end = a:range['end']['character'] == 0 ? a:range['end']['line'] - 1 : a:range['end']['line']
 
-    for l:diag in l:diagnostics
-        if lsc#utils#range_contains(a:range, l:diag['range'])
-            call add(l:diags, l:diag)
+    for l:line in range(l:line_start, l:line_end)
+        if has_key(l:diagnostics, l:line)
+            call extend(l:diags, l:diagnostics[l:line])
         endif
     endfor
 
@@ -1064,7 +1075,7 @@ function! s:client.textDocument_codeAction_all(buf) abort
 
     let l:uri = lsc#utils#get_buffer_uri(a:buf)
     let l:fh = self._context._file_handlers[l:uri]
-    let l:diagnostics = get(l:fh, '_diagnostics')
+    let l:diagnostics = l:fh._diagnostics[0]
     if empty(l:diagnostics)
         return
     endif
@@ -1102,10 +1113,6 @@ function! s:client.handle_textDocument_codeLens(buf, response) abort
         return
     endif
     let l:fh = self._context._file_handlers[l:uri]
-
-    let l:fh._codelenses = sort(deepcopy(l:codelenses),
-                    \ {d0, d1 -> lsc#utils#position_compare(d0['range']['start'], d1['range']['start'])})
-
 
     if !lsc#capabilities#codeLens_resolve(self.capabilities)
         call lsc#codelens#handle_codelens(l:fh, l:codelenses)
@@ -1172,9 +1179,6 @@ function! s:client.handle_textDocument_documentLink(buf, response) abort
         return
     endif
     let l:fh = self._context._file_handlers[l:uri]
-    let l:fh._documentlinks = sort(deepcopy(l:doclinks),
-                    \ {d0, d1 -> lsc#utils#position_compare(d0['range']['start'], d1['range']['start'])})
-
     "TODO(Richard): ccls does not support documentLink_resolve actually!!!
     call lsc#documentlink#handle_documentlink(l:fh, l:doclinks)
     return
@@ -1510,13 +1514,11 @@ function! s:client.handle_ccls_publishSkippedRanges(notification)
         return
     endif
     let l:fh = self._context._file_handlers[l:uri]
-    call assert_equal(l:buf, l:fh._buf)
-
     call lsc#skippedranges#handle_skipped_ranges(l:fh, l:ranges)
 endfunction
 " }}}
 
-" ccls_publishSemanticHighlight : doen {{{
+" ccls_publishSemanticHighlight : done {{{
 function! s:client.handle_ccls_publishSemanticHighlight(notification)
     let l:semantichighlight = get(a:notification, 'params')
     let l:uri = l:semantichighlight['uri']
@@ -1526,8 +1528,6 @@ function! s:client.handle_ccls_publishSemanticHighlight(notification)
         return
     endif
     let l:fh = self._context._file_handlers[l:uri]
-    call assert_equal(l:buf, l:fh._buf)
-
     call lsc#semantichighlight#handle_semantic_highlight(l:fh, l:symbols)
 endfunction
 "}}}
