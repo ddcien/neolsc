@@ -771,7 +771,7 @@ endfunction
 " }}}
 " declaration : done {{{
 function! s:client.handle_textDocument_declaration(response) abort
-    call lsc#locations#handle_locations(1, 1, a:response)
+    call lsc#locations#handle_locations(0, 1, a:response)
 endfunction
 
 function! s:client.textDocument_declaration(buf, line, character) abort
@@ -795,7 +795,7 @@ endfunction
 " }}}
 " definition : done {{{
 function! s:client.handle_textDocument_definition(response) abort
-    call lsc#locations#handle_locations(1, 1, a:response)
+    call lsc#locations#handle_locations(0, 1, a:response)
 endfunction
 
 function! s:client.textDocument_definition(buf, line, character) abort
@@ -820,7 +820,7 @@ endfunction
 " }}}
 " typeDefinition : done {{{
 function! s:client.handle_textDocument_typeDefinition(response) abort
-    call lsc#locations#handle_locations(1, 1, a:response)
+    call lsc#locations#handle_locations(0, 1, a:response)
 endfunction
 
 function! s:client.textDocument_typeDefinition(buf, line, character) abort
@@ -844,7 +844,7 @@ endfunction
 " }}}
 " implementation : done {{{
 function! s:client.handle_textDocument_implementation(response) abort
-    call lsc#locations#handle_locations(1, 1, a:response)
+    call lsc#locations#handle_locations(0, 1, a:response)
 endfunction
 
 function! s:client.textDocument_implementation(buf, line, character) abort
@@ -868,7 +868,7 @@ endfunction
 " }}}
 " references : done {{{
 function! s:client.handle_textDocument_references(response) abort
-    call lsc#locations#handle_locations(1, 0, a:response)
+    call lsc#locations#handle_locations(0, 0, a:response)
 endfunction
 
 function! s:client.textDocument_references(buf, line, character, incdec) abort
