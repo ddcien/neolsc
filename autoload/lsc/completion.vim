@@ -30,7 +30,8 @@ let s:CompletionItemKind = {
             \ }
 
 function! s:CompletionItem_get_info(item) abort
-    let l:documentation = get(a:item, 'documentation', 'NA')
+    let l:documentation = get(a:item, 'documentation', a:item.label)
+
     if type(l:documentation) == v:t_string
         return l:documentation
     endif
@@ -106,7 +107,7 @@ function! lsc#completion#handle_completion(CompletionList) abort
 
     call map(l:items, {_, item -> s:build_complete_item(item)})
 
-    setlocal completeopt=menuone,noinsert,noselect,preview
+    setlocal completeopt=menuone,noinsert,longest,preview
     call complete(l:start, l:items)
 endfunction
 
@@ -114,8 +115,12 @@ function! s:handle_snippet(item) abort
     if empty(a:item)
         return
     endif
-    let l:user_data = json_decode(get(a:item, 'user_data'))
-    call UltiSnips#Anon(l:user_data[1], l:user_data[0], '', 'i')
+    try
+        let l:user_data = json_decode(get(a:item, 'user_data'))
+        call UltiSnips#Anon(l:user_data[1], l:user_data[0], '', 'i')
+    catch /.*/
+        echom json_encode(a:item)
+    endtry
 endfunction
 
 
