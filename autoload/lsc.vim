@@ -83,7 +83,7 @@ function! s:server_launch(server_command, buf) abort
     endif
 endfunction
 
-function! s:get_last_char()
+function! s:get_last_char() abort
     let l:line = nvim_get_current_line()
     if empty(l:line)
         return
@@ -91,11 +91,11 @@ function! s:get_last_char()
     return l:line[col('.') - 2]
 endfunction
 
-function! s:on_insert_enter()
+function! s:on_insert_enter() abort
     let s:enter_position = getcurpos()
 endfunction
 
-function! s:on_text_changed_i()
+function! s:on_text_changed_i() abort
     if s:enter_position[1] != line('.')
         let s:enter_position = getcurpos()
         return
@@ -129,7 +129,7 @@ function! s:on_text_changed_i()
     redraws
 endfunction
 
-function! s:on_text_changed_p()
+function! s:on_text_changed_p() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
@@ -142,7 +142,7 @@ function! s:on_text_changed_p()
 endfunction
 
 
-function! s:on_cursor_moved()
+function! s:on_cursor_moved() abort
     if !exists('s:last_position')
         let s:last_position = {'buffer': bufnr('%'), 'line': line('.'), 'col': col('.')}
     endif
@@ -383,7 +383,7 @@ endfunction
 " }}}
 
 " {{{
-function! lsc#Diagnostics_next()
+function! lsc#Diagnostics_next() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
@@ -397,7 +397,7 @@ function! lsc#Diagnostics_next()
     call lsc#diagnostics#next(l:fh, line('.') - 1, col('.') - 1)
 endfunction
 
-function! lsc#Diagnostics_prev()
+function! lsc#Diagnostics_prev() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
@@ -411,7 +411,7 @@ function! lsc#Diagnostics_prev()
     call lsc#diagnostics#prev(l:fh, line('.') - 1, col('.') - 1)
 endfunction
 
-function! lsc#Diagnostics_show()
+function! lsc#Diagnostics_show() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
@@ -424,7 +424,7 @@ function! lsc#Diagnostics_show()
     call lsc#diagnostics#show(l:fh)
 endfunction
 
-function! lsc#textDocument_diagnostics()
+function! lsc#textDocument_diagnostics() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
@@ -437,7 +437,7 @@ function! lsc#textDocument_diagnostics()
     call lsc#diagnostics#list_diagnostics(l:fh)
 endfunction
 
-function! lsc#workspace_diagnostics()
+function! lsc#workspace_diagnostics() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
@@ -642,7 +642,7 @@ function! lsc#textDocument_quikFix() abort
 
 endfunction
 
-function! lsc#codeAction_next()
+function! lsc#codeAction_next() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
@@ -650,7 +650,7 @@ function! lsc#codeAction_next()
     endif
 endfunction
 
-function! lsc#codeAction_prev()
+function! lsc#codeAction_prev() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
@@ -658,7 +658,7 @@ function! lsc#codeAction_prev()
     endif
 endfunction
 
-function! lsc#codeActions()
+function! lsc#codeActions() abort
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)

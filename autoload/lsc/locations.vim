@@ -1,11 +1,11 @@
 " vim: set foldmethod=marker foldlevel=0 nomodeline:
 
 " locations {{{
-function! s:loc_compare_lite(loc0, loc1)
+function! s:loc_compare_lite(loc0, loc1) abort
     return !(a:loc0['filename'] ==# a:loc1['filename'] && a:loc0['lnum'] == a:loc1['lnum'] && a:loc0['col'] == a:loc1['col'])
 endfunction
 
-function! s:loc_compare_full(loc0, loc1)
+function! s:loc_compare_full(loc0, loc1) abort
     if a:loc0['filename'] ># a:loc1['filename']
         return 1
     elseif a:loc0['filename'] <# a:loc1['filename']
@@ -27,7 +27,7 @@ function! s:loc_compare_full(loc0, loc1)
     endif
 endfunction
 
-function! s:locations_to_qf_list(locations)
+function! s:locations_to_qf_list(locations) abort
     let l:list = []
     let l:cache = {}
 
@@ -56,7 +56,7 @@ function! s:jump_to_location(loc) abort
     execute 'll!' l:idx
 endfunction
 
-function! lsc#locations#locations_ui(jump_if_one)
+function! lsc#locations#locations_ui(jump_if_one) abort
     let l:loclist = getloclist(0)
     if a:jump_if_one && len(l:loclist) == 1
         ll! 1
@@ -70,7 +70,7 @@ function! lsc#locations#locations_ui(jump_if_one)
                 \ }))
 endfunction
 
-function! lsc#locations#handle_locations(sort, jump_if_one, response)
+function! lsc#locations#handle_locations(sort, jump_if_one, response) abort
     let l:locations = type(a:response.result) == v:t_dict ? [a:response.result]: a:response.result
     if empty(l:locations)
         return

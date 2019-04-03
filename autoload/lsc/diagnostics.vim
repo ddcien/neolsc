@@ -77,7 +77,7 @@ let s:DiagnosticSeverity = {
             \ '4': ['Hint', 'StatusLineNC', 'ddlsc_hint'],
             \ }
 
-function! s:split_range(range)
+function! s:split_range(range) abort
     let l:list = []
 
     let l:sl = a:range['start']['line']
@@ -92,7 +92,7 @@ function! s:split_range(range)
     return l:list
 endfunction
 
-function! s:Diagnostic_to_locinfo(buf, diag)
+function! s:Diagnostic_to_locinfo(buf, diag) abort
     let l:line = a:diag['range']['start']['line'] + 1
     let l:col = a:diag['range']['start']['character'] + 1
     echom json_encode(a:diag)

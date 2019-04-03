@@ -91,7 +91,7 @@ let s:StorageKindHL = {
             \ '3': 'ddlsc_VariableWrite',
             \ }
 
-function! s:parse_highlight(hl)
+function! s:parse_highlight(hl) abort
     let l:list = []
     let l:hl = get(s:StorageKindHL, get(a:hl, 'storage'),
                 \ get(s:SymbolKindHL, get(a:hl, 'kind')))

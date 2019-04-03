@@ -30,7 +30,7 @@ let s:symbol_kinds = {
             \ '26': 'TypeParameter',
             \ }
 
-function! s:SymbolInformation_to_locinfo(sym)
+function! s:SymbolInformation_to_locinfo(sym) abort
     let l:loc = a:sym.location
     let l:path = lsc#uri#uri_to_path(l:loc.uri)
     let l:line = l:loc['range']['start']['line']
@@ -39,14 +39,14 @@ function! s:SymbolInformation_to_locinfo(sym)
     return {'filename': l:path, 'lnum': l:line + 1, 'col': l:col + 1, 'text': l:text}
 endfunction
 
-function! s:DocumentSymbol_to_locinfo(buf, sym)
+function! s:DocumentSymbol_to_locinfo(buf, sym) abort
     let l:line = a:sym['range']['start']['line']
     let l:col = a:sym['range']['start']['character']
     let l:text = ' ->: '. get(s:symbol_kinds, a:sym.kind, 'Unknown[' . string(a:sym.kind) . ']') . ':' . get(a:sym, 'detail', a:sym.name)
     return {'bufnr': a:buf, 'lnum': l:line + 1, 'col': l:col + 1, 'text': l:text}
 endfunction
 
-function! lsc#symbols#handle_symbols(buf, response)
+function! lsc#symbols#handle_symbols(buf, response) abort
     let l:symbols = a:response.result
     if empty(l:symbols)
         return

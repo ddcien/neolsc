@@ -9,19 +9,19 @@ endfunction
 " }}}
 
 " Public API {{{
-function! lsc#lsp#get_Position(line, character)
+function! lsc#lsp#get_Position(line, character) abort
     return {'line': a:line, 'character': a:character}
 endfunction
 
-function! lsc#lsp#get_Range(start, end)
+function! lsc#lsp#get_Range(start, end) abort
     return {'start': a:start, 'end': a:end}
 endfunction
 
-function! lsc#lsp#get_Location(uri, range)
+function! lsc#lsp#get_Location(uri, range) abort
     return {'uri': a:uri, 'range': a:range}
 endfunction
 
-function! lsc#lsp#get_LocationLink(targetUri, targetRange, originSelectionRange, targetSelectionRange)
+function! lsc#lsp#get_LocationLink(targetUri, targetRange, originSelectionRange, targetSelectionRange) abort
     return {
                 \ 'targetUri': a:targetUri,
                 \ 'targetRange': a:targetRange,

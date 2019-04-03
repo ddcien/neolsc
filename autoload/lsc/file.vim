@@ -2,7 +2,7 @@
 
 let s:file_handler = {}
 
-function s:file_handler.alloc(buf)
+function! s:file_handler.alloc(buf) abort
     if type(a:buf) == v:t_number
         let l:buf = a:buf
         let l:uri = lsc#utils#get_buffer_uri(a:buf)
@@ -33,7 +33,7 @@ function s:file_handler.alloc(buf)
     return l:fh
 endfunction
 
-function s:file_handler.set_virtual_text(ns_id, line, chunks)
+function! s:file_handler.set_virtual_text(ns_id, line, chunks) abort
     if a:line < 0
         let self._vtext[a:ns_id] = {}
         return nvim_buf_clear_namespace(self._buf, a:ns_id, 0, -1)
@@ -56,10 +56,10 @@ function s:file_handler.set_virtual_text(ns_id, line, chunks)
     endif
 endfunction
 
-function s:file_handler.add_highlight(ns_id, line, hl_group, col_start, col_end)
+function! s:file_handler.add_highlight(ns_id, line, hl_group, col_start, col_end) abort
     call nvim_buf_add_highlight(self._buf, a:ns_id, a:hl_group, a:line, a:col_start, a:col_end)
 endfunction
 
-function lsc#file#new(buf)
+function! lsc#file#new(buf) abort
     return s:file_handler.alloc(a:buf)
 endfunction

@@ -25,7 +25,7 @@ function! s:get_content_length(headers) abort
     return -1
 endfunction
 
-function s:client.on_stdout(job_id, data, event)
+function! s:client.on_stdout(job_id, data, event) abort
     let l:ctx = self._context.data_buf
 
     let l:ctx['data'] = join([l:ctx['data'] . a:data[0]] + a:data[1:], "\n")
@@ -56,15 +56,15 @@ function s:client.on_stdout(job_id, data, event)
     endwhile
 endfunction
 
-function s:client.on_stderr(job_id, data, event)
+function! s:client.on_stderr(job_id, data, event) abort
     call lsc#log#log({'ERROR': [a:data, a:event]})
 endfunction
 
-function s:client.on_exit(job_id, data, event)
+function! s:client.on_exit(job_id, data, event) abort
     call lsc#log#log({'EXIT': [a:data, a:event]})
 endfunction
 
-function s:client.response_handler(response)
+function! s:client.response_handler(response) abort
     if has_key(a:response, 'method')
         let l:request_method = a:response['method']
         if has_key(a:response, 'id')
@@ -106,7 +106,7 @@ function s:client.response_handler(response)
     endif
 endfunction
 
-function! s:client.send_notification(notification)
+function! s:client.send_notification(notification) abort
     call extend(a:notification, {'jsonrpc': '2.0'})
 
     let l:content = json_encode(a:notification)
@@ -116,7 +116,7 @@ function! s:client.send_notification(notification)
     call chansend(self._jobid, l:data)
 endfunction
 
-function! s:client.send_request(request, callback)
+function! s:client.send_request(request, callback) abort
     call extend(a:request, {'jsonrpc': '2.0', 'id': self._context.request_id})
     let l:content = json_encode(a:request)
     let l:data = 'Content-Length: ' . string(strlen(l:content)) . "\r\n\r\n" . l:content
@@ -128,41 +128,41 @@ function! s:client.send_request(request, callback)
     call chansend(self._jobid, l:data)
 endfunction
 
-function! s:client.send_request_sync(request, callback)
+function! s:client.send_request_sync(request, callback) abort
     call self.send_request(a:request, a:callback)
     while has_key(self._request_hooks, a:request.id)
         sleep 10m
     endwhile
 endfunction
 
-function! s:client.send_request_batch(requests, callback)
+function! s:client.send_request_batch(requests, callback) abort
     for l:request in a:requests
         call self.send_request(l:request, a:callback)
     endfor
 endfunction
 
-function! s:client.send_request_batch_sync(requests, callback)
+function! s:client.send_request_batch_sync(requests, callback) abort
     let l:ctx = {'callback': a:callback, 'ret': []}
-    function l:ctx.funcall(res) dict
+    function! l:ctx.funcall(res) abort dict
         call self.callback(a:res)
     endfunction
     call self.send_request_batch(a:requests, {response -> a:callback(response)})
 endfunction
 
-function! s:client.register_notification_hook(method, hook)
+function! s:client.register_notification_hook(method, hook) abort
     if type(a:hook) == v:t_func
         let self._notification_hooks[a:method] = a:hook
     endif
 endfunction
 
-function! s:client.initialized()
+function! s:client.initialized() abort
     return has_key(self, 'capabilities')
 endfunction
 " }}}
 
 " general {{{
 " launch :done {{{
-function s:client.launch(command)
+function! s:client.launch(command) abort
     let l:client = deepcopy(s:client)
     let l:client._command = a:command
     let l:client._jobid = jobstart(l:client._command, l:client)
@@ -173,7 +173,7 @@ function s:client.launch(command)
 endfunction
 " }}}
 " initialize : done {{{
-function! s:client.handle_initialize(workspace_settings, buf, response)
+function! s:client.handle_initialize(workspace_settings, buf, response) abort
     call extend(self, a:response.result)
     call self.send_notification({'method': 'initialized', 'params': {}})
     call l:self.register_notification_hook(
@@ -256,7 +256,7 @@ function! s:client.load_init_params(root_dir, init_opts) abort
     return l:param
 endfunction
 
-function! s:client.initialize(root_dir, init_opts, workspace_settings, buf)
+function! s:client.initialize(root_dir, init_opts, workspace_settings, buf) abort
     let l:params = self.load_init_params([a:root_dir], a:init_opts)
     call self.send_request(
                 \ {
@@ -268,12 +268,12 @@ function! s:client.initialize(root_dir, init_opts, workspace_settings, buf)
 endfunction
 " }}}
 " shutdown and exit : done {{{
-function! s:client.handle_shutdown(response)
+function! s:client.handle_shutdown(response) abort
     call self.send_notification({'method': 'exit'})
     call remove(self, 'capabilities')
 endfunction
 
-function! s:client.shutdown()
+function! s:client.shutdown() abort
     if !self.initialized()
         return
     endif
@@ -286,13 +286,13 @@ function! s:client.shutdown()
 endfunction
 " }}}
 " $/cancelRequest {{{
-function! s:client.handle_cancelRequest(notification)
+function! s:client.handle_cancelRequest(notification) abort
     call assert_equal('$/cancelRequest', get(a:notification, 'method'))
     let l:params = get(a:notification, 'params', {})
     let l:request_id = get(l:params, 'id')
 endfunction
 
-function! s:client.cancelRequest(request_id)
+function! s:client.cancelRequest(request_id) abort
     if !self.initialized()
         return
     endif
@@ -305,19 +305,19 @@ endfunction
 
 " window {{{
 " showMessage {{{
-function! s:client.handle_window_showMessage(notification)
+function! s:client.handle_window_showMessage(notification) abort
     call assert_equal('window/showMessage', get(a:notification, 'method'))
     let l:params = get(a:notification, 'params', {})
 endfunction
 " }}}
 " logMessage {{{
-function! s:client.handle_window_logMessage(notification)
+function! s:client.handle_window_logMessage(notification) abort
     call assert_equal('window/logMessage', get(a:notification, 'method'))
     let l:params = get(a:notification, 'params', {})
 endfunction
 " }}}
 " showMessageRequest {{{
-function! s:client.handle_window_showMessageRequest(notification)
+function! s:client.handle_window_showMessageRequest(notification) abort
     call assert_equal('window/showMessageRequest', get(a:notification, 'method'))
     let l:params = get(a:notification, 'params', {})
     " TODO(Richard):
@@ -327,7 +327,7 @@ endfunction
 " }}}
 
 " Telemetry {{{
-function! s:client.handle_telemetry_event(notification)
+function! s:client.handle_telemetry_event(notification) abort
     call assert_equal('telemetry/event', get(a:notification, 'method'))
     let l:params = get(a:notification, 'params', {})
     " TODO(Richard):
@@ -335,14 +335,14 @@ endfunction
 " }}}
 
 " client {{{
-function! s:client.handle_client_registerCapability(notification)
+function! s:client.handle_client_registerCapability(notification) abort
     call assert_equal('client/registerCapability', get(a:notification, 'method'))
     let l:params = get(a:notification, 'params', {})
     " TODO(Richard):
     call self.send_notification({'id': a:notification.id, 'result': {}})
 endfunction
 
-function! s:client.handle_client_unregisterCapability(notification)
+function! s:client.handle_client_unregisterCapability(notification) abort
     call assert_equal('client/unregisterCapability', get(a:notification, 'method'))
     let l:params = get(a:notification, 'params', {})
     " TODO(Richard):
@@ -352,7 +352,7 @@ endfunction
 
 " workspace {{{
 " workspaceFolders {{{
-function! s:client.handle_workspace_workspaceFolders(notification)
+function! s:client.handle_workspace_workspaceFolders(notification) abort
     call assert_equal('workspace/workspaceFolders', get(a:notification, 'method'))
     let l:params = get(a:notification, 'params', {})
     " TODO(Richard):
@@ -390,7 +390,7 @@ function! s:client.workspace_didChangeConfiguration(settings) abort
 endfunction
 " }}}
 " configuration {{{
-function! s:client.handle_workspace_configuration(notification)
+function! s:client.handle_workspace_configuration(notification) abort
     call assert_equal('workspace/configuration', get(a:notification, 'method'))
     let l:params = get(a:notification, 'params', {})
     " TODO(Richard):
@@ -412,7 +412,7 @@ function! s:client.workspace_didChangeWatchedFiles(events) abort
 endfunction
 " }}}
 " symbol : done {{{
-function! s:client.handle_workspace_symbol(response)
+function! s:client.handle_workspace_symbol(response) abort
     call lsc#symbols#handle_symbols(-1, a:response)
 endfunction
 
@@ -435,7 +435,7 @@ function! s:client.workspace_symbol(query) abort
 endfunction
 " }}}
 " executeCommand {{{
-function! s:client.handle_workspace_executeCommand(response)
+function! s:client.handle_workspace_executeCommand(response) abort
     " TODO(Richard):
 endfunction
 
@@ -458,7 +458,7 @@ function! s:client.workspace_executeCommand(command, arguments) abort
 endfunction
 " }}}
 " applyEdit : done : never tested {{{
-function! s:client.handle_workspace_applyEdit(notification)
+function! s:client.handle_workspace_applyEdit(notification) abort
     let l:params = get(a:notification, 'params', {})
     if empty(l:params)
         return
@@ -635,7 +635,7 @@ endfunction
 " }}}
 
 " diagnostics {{{
-function! s:client.handle_textDocument_publishDiagnostics(notification)
+function! s:client.handle_textDocument_publishDiagnostics(notification) abort
     let l:diagnostic = get(a:notification, 'params')
     let l:uri = l:diagnostic['uri']
     let l:buf = bufnr(lsc#uri#uri_to_path(l:uri))
@@ -719,7 +719,7 @@ function! s:client.textDocument_completionItem_resolve(item) abort
 endfunction
 " }}}
 " hover done {{{
-function! s:client.handle_textDocument_hover(response)
+function! s:client.handle_textDocument_hover(response) abort
     call lsc#hover#handle_hover(a:response)
 endfunction
 
@@ -896,7 +896,7 @@ function! s:client.textDocument_references(buf, line, character, incdec) abort
 endfunction
 " }}}
 " documentHighlight : done {{{
-function! s:client.handle_textDocument_documentHighlight(buf, response)
+function! s:client.handle_textDocument_documentHighlight(buf, response) abort
     let l:highlights = get(a:response, 'result')
     let l:uri = lsc#utils#get_buffer_uri(a:buf)
     if empty(l:uri)
@@ -1404,7 +1404,7 @@ function! s:client.textDocument_rename(buf, line, character) abort
     if l:new_name ==# l:placeholder
         return
     endif
-    call textDocument_raw_rename({
+    call self.textDocument_raw_rename({
                 \ 'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
                 \ 'position': lsc#lsp#get_Position(a:line, a:character),
                 \ 'newName': l:new_name,
@@ -1445,7 +1445,7 @@ function! s:client.handle_textDocument_prepareRename(buf, response) abort
         return
     endif
 
-    call textDocument_raw_rename({
+    call self.textDocument_raw_rename({
                 \ 'textDocument': lsc#lsp#get_TextDocumentIdentifier(a:buf),
                 \ 'position': l:range['start'],
                 \ 'newName': l:new_name,
@@ -1505,7 +1505,7 @@ endfunction
 " }}}
 " CCLS {{{
 " ccls_publishSkippedRanges : done {{{
-function! s:client.handle_ccls_publishSkippedRanges(notification)
+function! s:client.handle_ccls_publishSkippedRanges(notification) abort
     let l:skippedRanges = get(a:notification, 'params')
     let l:uri = l:skippedRanges['uri']
     let l:ranges = l:skippedRanges['skippedRanges']
@@ -1519,7 +1519,7 @@ endfunction
 " }}}
 
 " ccls_publishSemanticHighlight : done {{{
-function! s:client.handle_ccls_publishSemanticHighlight(notification)
+function! s:client.handle_ccls_publishSemanticHighlight(notification) abort
     let l:semantichighlight = get(a:notification, 'params')
     let l:uri = l:semantichighlight['uri']
     let l:symbols = l:semantichighlight['symbols']
@@ -1536,7 +1536,7 @@ endfunction
 
 let s:CallTypes = ['Direct', 'Base', 'Derived', 'All' ]
 
-function! s:cclsCall_to_locinfo(item)
+function! s:cclsCall_to_locinfo(item) abort
     let l:location = get(a:item, 'location')
 
     return {
@@ -1647,7 +1647,7 @@ endfunction
 " ccls_inheritance : done {{{
 let s:InheritanceKinds =  ['Invalid', 'File', 'Type', 'Function', 'Variable']
 
-function! s:cclsInheritance_to_locinfo(item)
+function! s:cclsInheritance_to_locinfo(item) abort
     let l:location = get(a:item, 'location')
     return {
                 \ 'filename': lsc#uri#uri_to_path(l:location['uri']),
@@ -1697,7 +1697,7 @@ endfunction
 " }}}
 
 " ccls_member : done {{{
-function! s:cclsMember_to_locinfo(item)
+function! s:cclsMember_to_locinfo(item) abort
     let l:location = get(a:item, 'location')
     return {
                 \ 'filename': lsc#uri#uri_to_path(l:location['uri']),
@@ -1842,7 +1842,7 @@ function! lsc#client#launch(command, root_dir, buf) abort
     return l:client
 endfunction
 
-function! lsc#client#is_client_instance(server)
+function! lsc#client#is_client_instance(server) abort
     return type(a:server) == v:t_dict && has_key(a:server, '_jobid') && a:server['_jobid'] != -1
 endfunction
 " }}}

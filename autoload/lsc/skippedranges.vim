@@ -4,7 +4,7 @@ let s:skipped_ranges_ns_id = 0
 
 hi SkippedRange guifg=#657b83 ctermfg=11
 
-function! s:parse_highlight(range)
+function! s:parse_highlight(range) abort
     let l:list = []
 
     let l:sl = a:range['start']['line']

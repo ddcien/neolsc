@@ -12,7 +12,7 @@ hi default link HighlightRead  HighlightText
 hi default link HighlightWrite HighlightText
 
 
-function! s:parse_highlight(hl)
+function! s:parse_highlight(hl) abort
     let l:list = []
 
     let l:hl = {'1': 'HighlightText', '2': 'HighlightRead', '3': 'HighlightWrite'}[get(a:hl, 'kind', '3')]

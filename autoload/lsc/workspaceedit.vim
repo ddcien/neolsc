@@ -1,6 +1,6 @@
 " vim: set foldmethod=marker foldlevel=0 nomodeline:
 
-function! s:merge_TextEdits(edits)
+function! s:merge_TextEdits(edits) abort
     call sort(a:edits, {e0, e1 -> s:TextEdit_Location_compare(e0, e1)})
     let l:merged = [remove(a:edits, 0)]
     for l:edit in a:edits
@@ -13,11 +13,11 @@ function! s:merge_TextEdits(edits)
     return reverse(l:merged)
 endfunction
 
-function! s:Position_is_same(pos0, pos1)
+function! s:Position_is_same(pos0, pos1) abort
     return a:pos0.line == a:pos1.line && a:pos0.character == a:pos1.character
 endfunction
 
-function! s:TextEdit_Location_compare(edit0, edit1)
+function! s:TextEdit_Location_compare(edit0, edit1) abort
     let l:ret = s:Position_compare(a:edit0.range.start, a:edit1.range.start)
     if l:ret != 0
         return l:ret
@@ -31,11 +31,11 @@ function! s:TextEdit_Location_compare(edit0, edit1)
     return 0
 endfunction
 
-function! s:TextEdit_is_insert(edit)
+function! s:TextEdit_is_insert(edit) abort
     return s:Position_is_same(a:edit.range.start, a:edit.range.end)
 endfunction
 
-function! s:Position_compare(pos0, pos1)
+function! s:Position_compare(pos0, pos1) abort
     if a:pos0.line > a:pos1.line
         return 1
     elseif a:pos0.line < a:pos1.line
@@ -49,13 +49,13 @@ function! s:Position_compare(pos0, pos1)
     endif
 endfunction
 
-function! s:build_sub_cmd(edit)
+function! s:build_sub_cmd(edit) abort
     
 endfunction
 
 
 " ---------------------------------------------------
-function! lsc#workspaceedit#handle_WorkspaceEdit(server, workspaceedit)
+function! lsc#workspaceedit#handle_WorkspaceEdit(server, workspaceedit) abort
     if empty(a:workspaceedit)
         return
     endif
@@ -77,13 +77,13 @@ function! lsc#workspaceedit#handle_WorkspaceEdit(server, workspaceedit)
     call winrestview(l:cur_view)
 endfunction
 
-function! lsc#workspaceedit#handle_TextEdits(server, buf, textedits)
+function! lsc#workspaceedit#handle_TextEdits(server, buf, textedits) abort
     let l:cur_view = winsaveview()
     call s:handle_buf_edits(a:server, a:buf, a:textedits)
     call winrestview(l:cur_view)
 endfunction
 
-function! s:handle_documentChanges(server, documentChanges)
+function! s:handle_documentChanges(server, documentChanges) abort
     for l:documentChange in a:documentChanges
         if has_key(l:documentChange, 'kind')
             let l:kind = get(l:documentChange, 'kind')
@@ -100,21 +100,21 @@ function! s:handle_documentChanges(server, documentChanges)
     endfor
 endfunction
 
-function! s:handle_CreateFile(CreateFile)
+function! s:handle_CreateFile(CreateFile) abort
     "TODO:
     return
 endfunction
-function! s:handle_RenameFile(RenameFile)
+function! s:handle_RenameFile(RenameFile) abort
     "TODO:
     return
 endfunction
-function! s:handle_DeleteFile(DeleteFile)
+function! s:handle_DeleteFile(DeleteFile) abort
     "TODO:
     return
 endfunction
 
 
-function! s:handle_textedit(buf, edit)
+function! s:handle_textedit(buf, edit) abort
     let l:range = a:edit.range
     let l:new_text = a:edit.newText
 
@@ -140,13 +140,13 @@ function! s:handle_textedit(buf, edit)
     call nvim_buf_set_lines(a:buf, l:line_start, l:line_end, v:true, l:n_lines)
 endfunction
 
-function! s:handle_changes(server, changes)
+function! s:handle_changes(server, changes) abort
     for [l:uri, l:edits] in items(a:changes)
         call s:handle_uri_edits(a:server, l:uri, l:edits)
     endfor
 endfunction
 
-function! s:handle_documentChange(server, documentChange)
+function! s:handle_documentChange(server, documentChange) abort
     let l:uri = a:documentChange.textDocument.uri
     let l:ver = get(a:documentChange.textDocument, 'version')
     let l:edits = a:documentChange.edits
@@ -154,7 +154,7 @@ function! s:handle_documentChange(server, documentChange)
     call s:handle_uri_edits(a:server, l:uri, l:edits)
 endfunction
 
-function! s:handle_uri_edits(server, uri, edits)
+function! s:handle_uri_edits(server, uri, edits) abort
     if empty(a:edits)
         return
     endif
@@ -172,7 +172,7 @@ function! s:handle_uri_edits(server, uri, edits)
     call s:handle_buf_edits(a:server, l:buf, a:edits)
 endfunction
 
-function! s:handle_buf_edits(server, buf, edits)
+function! s:handle_buf_edits(server, buf, edits) abort
     if empty(a:edits)
         return
     endif
