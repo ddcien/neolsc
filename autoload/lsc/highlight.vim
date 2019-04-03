@@ -43,11 +43,7 @@ function! lsc#highlight#handle_highlight(fh, highlights) abort
 
     for l:hl in a:highlights
         for [l:hl, l:line, l:sc, l:ec] in s:parse_highlight(l:hl)
-            try
-                call a:fh.add_highlight(s:highlight_ns_id, l:line, l:hl, l:sc, l:ec)
-            catch /.*/
-                echomsg v:exception
-            endtry
+            call a:fh.add_highlight(s:highlight_ns_id, l:line, l:hl, l:sc, l:ec)
         endfor
     endfor
 endfunction

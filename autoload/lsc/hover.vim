@@ -1,6 +1,6 @@
 " vim: set foldmethod=marker foldlevel=0 nomodeline:
 
-
+" lsc#hover#handle_hover {{{
 function! lsc#hover#handle_hover(response) abort
     let l:hover = a:response.result
 
@@ -41,3 +41,4 @@ function! lsc#hover#handle_hover(response) abort
 
     call win_gotoid(l:current_window_id)
 endfunction
+" }}}

@@ -111,7 +111,6 @@ function! lsc#completion#handle_completion(CompletionList) abort
 endfunction
 
 function! s:handle_snippet(item) abort
-    echom printf('AAAAAAAAAAAAAAAAAAAA: %s', json_encode(a:item))
     if empty(a:item)
         return
     endif

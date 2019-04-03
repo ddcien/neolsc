@@ -370,37 +370,69 @@ function! lsc#Diagnostics_next()
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.Diagnostics_next(l:buf_nr, line('.') - 1, col('.') - 1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+
+    let l:uri = lsc#utils#get_buffer_uri(l:buf_nr)
+    let l:fh = l:server._context._file_handlers[l:uri]
+
+    call lsc#diagnostics#next(l:fh, line('.') - 1, col('.') - 1)
 endfunction
 
 function! lsc#Diagnostics_prev()
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.Diagnostics_prev(l:buf_nr, line('.') - 1, col('.') - 1)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+
+    let l:uri = lsc#utils#get_buffer_uri(l:buf_nr)
+    let l:fh = l:server._context._file_handlers[l:uri]
+
+    call lsc#diagnostics#prev(l:fh, line('.') - 1, col('.') - 1)
+endfunction
+
+function! lsc#Diagnostics_show()
+    let l:buf_nr = bufnr('%')
+    let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
+    let l:server = s:get_server_0(l:buf_ft)
+    if !lsc#client#is_client_instance(l:server)
+        return
+    endif
+    let l:uri = lsc#utils#get_buffer_uri(l:buf_nr)
+    let l:fh = l:server._context._file_handlers[l:uri]
+
+    call lsc#diagnostics#show(l:fh)
 endfunction
 
 function! lsc#textDocument_diagnostics()
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.textDocument_diagnostics(l:buf_nr)
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+
+    let l:uri = lsc#utils#get_buffer_uri(l:buf_nr)
+    let l:fh = l:server._context._file_handlers[l:uri]
+    call lsc#diagnostics#list_diagnostics(l:fh)
 endfunction
 
 function! lsc#workspace_diagnostics()
     let l:buf_nr = bufnr('%')
     let l:buf_ft = lsc#utils#get_filetype(l:buf_nr)
     let l:server = s:get_server_0(l:buf_ft)
-    if lsc#client#is_client_instance(l:server)
-        call l:server.workspace_diagnostics()
+    if !lsc#client#is_client_instance(l:server)
+        return
     endif
+
+    let l:uri = lsc#utils#get_buffer_uri(l:buf_nr)
+    let l:fhs = l:server._context._file_handlers
+    call lsc#diagnostics#list_workspace_diagnostics(l:server, l:fhs)
 endfunction
+
 " }}}
 
 " Language Features {{{

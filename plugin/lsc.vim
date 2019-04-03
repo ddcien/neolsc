@@ -8,6 +8,15 @@ let g:lsc_log_file = get(g:, 'lsc_log_file', '/tmp/lsc.log')
 let g:lsc_auto_enable = get(g:, 'lsc_auto_enable', 0)
 let g:lsc_sort_locations = get(g:, 'lsc_sort_locations', 1)
 
+
+" lsc_diag_strategy:
+"     0: disable, never show diags
+"     1: manual,
+"     2: lazy,
+"
+let g:lsc_diag_strategy = get(g:, 'lsc_diag_strategy', 1)
+
+
 " auto_codeLens:
 "     0: disable
 "     1: on_save
@@ -153,8 +162,5 @@ inoremap <silent> <expr> <Plug>(lsc-complete) lsc#textDocument_completion()
 
 let s:key = '<TAB>'
 exe 'inoremap <expr>' . s:key . ' pumvisible() ? "\<C-n>" : "\' . s:key .'"'
-
-let s:key = '<enter>'
-exe 'inoremap <expr>' . s:key . ' pumvisible() ? "\<C-y>" : "\' . s:key .'"'
 
 inoremap <c-space> <Plug>(lsc-complete)

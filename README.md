@@ -101,3 +101,4 @@
 2. Use floating window for hover and some other information.
 5. Export commands and key bindings.
 6. Export custom settings.
+7. Use neosnippet.vim

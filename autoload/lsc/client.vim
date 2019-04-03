@@ -500,12 +500,6 @@ function! s:client.textDocument_didOpen(buf) abort
                 \     'textDocument': lsc#lsp#get_TextDocumentItem(a:buf, l:fh._ver)
                 \ }
                 \ })
-    if get(self._settings, 'auto_codeLens') > 0
-        call self.textDocument_codeLens(a:buf)
-    endif
-    if get(self._settings, 'auto_documentlink') > 0
-        call self.textDocument_documentLink(a:buf)
-    endif
 endfunction
 " }}}
 " didChange : done {{{
@@ -540,13 +534,6 @@ function! s:client.textDocument_didChange(buf) abort
                 \     'contentChanges': [{'text': lsc#lsp#get_textDocumentText(a:buf)}],
                 \ }
                 \ })
-
-    if get(self._settings, 'auto_codeLens') == 2
-        call self.textDocument_codeLens(a:buf)
-    endif
-    if get(self._settings, 'auto_documentlink') == 2
-        call self.textDocument_documentLink(a:buf)
-    endif
 endfunction
 " }}}
 " willSave {{{
@@ -611,22 +598,6 @@ function! s:client.textDocument_didSave(buf) abort
                 \ 'method': 'textDocument/didSave',
                 \ 'params': l:params
                 \ })
-
-    if get(self._settings, 'auto_codeLens') == 1
-        call self.textDocument_codeLens(a:buf)
-    endif
-    if get(self._settings, 'auto_documentlink') == 1
-        call self.textDocument_documentLink(a:buf)
-    endif
-
-    let l:uri = lsc#utils#get_buffer_uri(a:buf)
-    if empty(l:uri)
-        return
-    endif
-    let l:fh = self._context._file_handlers[l:uri]
-
-    call lsc#diagnostics#handle_diagnostics(l:fh)
-    call self.textDocument_codeAction_all(a:buf)
 endfunction
 " }}}
 " didClose : working, need more control {{{
@@ -646,28 +617,12 @@ function! s:client.textDocument_didClose(buf) abort
                 \ 'method': 'textDocument/didClose',
                 \ 'params': l:params
                 \ })
-    " TODO(Richard):
-    " call remove(self._context.buffer_info, l:path)
+    call remove(self._context.buffer_info, l:path)
 endfunction
 " }}}
 " }}}
 
 " diagnostics {{{
-"
-function! s:position_compare(pos0, pos1) abort
-    if a:pos0.line > a:pos1.line
-        return 1
-    elseif a:pos0.line < a:pos1.line
-        return -1
-    elseif a:pos0.character > a:pos1.character
-        return 1
-    elseif a:pos0.character < a:pos1.character
-        return -1
-    else
-        return 0
-    endif
-endfunction
-
 function! s:client.handle_textDocument_publishDiagnostics(notification)
     let l:diagnostic = get(a:notification, 'params')
     let l:uri = l:diagnostic['uri']
@@ -676,76 +631,12 @@ function! s:client.handle_textDocument_publishDiagnostics(notification)
 
     if l:buf > 0
         let l:fh = self._context._file_handlers[l:uri]
-        let l:fh._diagnostics = sort(l:diagnostics,
-                    \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
+        call lsc#diagnostics#update(l:fh, l:diagnostics)
     elseif !empty(l:diagnostics)
         let l:fh = lsc#file#new(l:uri)
         let self._context._file_handlers[l:uri] = l:fh
-        let l:fh._diagnostics = sort(l:diagnostics,
-                    \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
+        call lsc#diagnostics#update(l:fh, l:diagnostics)
     endif
-
-endfunction
-
-function! s:client.Diagnostics_next(buf, line, character) abort
-    let l:uri = lsc#utils#get_buffer_uri(a:buf)
-    let l:fh = self._context._file_handlers[l:uri]
-
-    if empty(l:fh._diagnostics)
-        return
-    endif
-
-    let l:to = l:fh._diagnostics[0]['range']['start']
-    let l:cur = {'line': a:line, 'character': a:character}
-
-    for l:diag in l:fh._diagnostics
-        let l:pos = l:diag['range']['start']
-        if s:position_compare(l:cur, l:pos) < 0
-            let l:to = l:pos
-            break
-        endif
-    endfor
-    echom json_encode(l:to)
-    call setpos('.', [a:buf, l:to['line'] + 1, l:to['character'] + 1, 0])
-endfunction
-
-function! s:client.Diagnostics_prev(buf, line, character)
-    let l:uri = lsc#utils#get_buffer_uri(a:buf)
-    let l:fh = self._context._file_handlers[l:uri]
-
-    if empty(l:fh._diagnostics)
-        return
-    endif
-
-    let l:to = l:fh._diagnostics[-1]['range']['start']
-    let l:cur = {'line': a:line, 'character': a:character}
-
-    for l:diag in l:fh._diagnostics
-        let l:pos = l:diag['range']['end']
-        if s:position_compare(l:cur, l:pos) > 0
-            let l:to = l:diag['range']['start']
-            break
-        endif
-    endfor
-
-    call setpos('.', [a:buf, l:to['line'] + 1, l:to['character'] + 1, 0])
-endfunction
-
-
-function! s:client.textDocument_diagnostics(buf) abort
-    if !self.initialized()
-        return
-    endif
-    let l:uri = lsc#utils#get_buffer_uri(a:buf)
-    let l:fh = self._context._file_handlers[l:uri]
-    call lsc#diagnostics#list_diagnostics(l:fh)
-endfunction
-
-function! s:client.workspace_diagnostics() abort
-    if !self.initialized()
-        return
-    endif
-    call lsc#diagnostics#list_workspace_diagnostics(self._context._file_handlers)
 endfunction
 " }}}
 
@@ -1001,7 +892,7 @@ function! s:client.handle_textDocument_documentHighlight(buf, response)
     let l:fh = self._context._file_handlers[l:uri]
 
     let l:fh._highlights = sort(deepcopy(l:highlights),
-                    \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
+                    \ {d0, d1 -> lsc#utils#position_compare(d0['range']['start'], d1['range']['start'])})
 
     call lsc#highlight#handle_highlight(l:fh, l:highlights)
 endfunction
@@ -1096,9 +987,6 @@ function! s:client.handle_textDocument_codeAction(response) abort
 endfunction
 
 " {{{
-function! s:range_contains(big_range, small_range) abort
-    return s:position_compare(a:big_range['start'], a:small_range['start']) <= 0 && s:position_compare(a:big_range['end'], a:small_range['end']) >= 0
-endfunction
 
 function! s:client.textDocument_rangeCodeAction(buf, range) abort
     if !self.initialized()
@@ -1118,7 +1006,7 @@ function! s:client.textDocument_rangeCodeAction(buf, range) abort
     let l:diags = []
 
     for l:diag in l:diagnostics
-        if s:range_contains(a:range, l:diag['range'])
+        if lsc#utils#range_contains(a:range, l:diag['range'])
             call add(l:diags, l:diag)
         endif
     endfor
@@ -1216,7 +1104,7 @@ function! s:client.handle_textDocument_codeLens(buf, response) abort
     let l:fh = self._context._file_handlers[l:uri]
 
     let l:fh._codelenses = sort(deepcopy(l:codelenses),
-                    \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
+                    \ {d0, d1 -> lsc#utils#position_compare(d0['range']['start'], d1['range']['start'])})
 
 
     if !lsc#capabilities#codeLens_resolve(self.capabilities)
@@ -1284,17 +1172,17 @@ function! s:client.handle_textDocument_documentLink(buf, response) abort
         return
     endif
     let l:fh = self._context._file_handlers[l:uri]
-
     let l:fh._documentlinks = sort(deepcopy(l:doclinks),
-                    \ {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
+                    \ {d0, d1 -> lsc#utils#position_compare(d0['range']['start'], d1['range']['start'])})
+
+    "TODO(Richard): ccls does not support documentLink_resolve actually!!!
+    call lsc#documentlink#handle_documentlink(l:fh, l:doclinks)
+    return
 
     if !lsc#capabilities#documentLink_resolve(self.capabilities)
         call lsc#documentlink#handle_documentlink(l:fh, l:doclinks)
         return
     endif
-
-    return
-
     let l:ctx = {'ret': [], 'len': len(l:doclinks), 'buf': a:buf}
     for l:dl in l:doclinks
         call self.textDocument_documentLink_resolve(l:ctx, l:dl)

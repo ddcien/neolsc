@@ -25,7 +25,9 @@ function s:file_handler.alloc(buf)
     else
         let l:fh._tick = -1
     endif
-    let l:fh._diagnostics = []
+
+    let l:fh._diagnostics = [[], {}]
+    let l:fh._code_actions = []
     let l:fh._codelenses = []
     let l:fh._highlights = []
     let l:fh._documentlinks = []

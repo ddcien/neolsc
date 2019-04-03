@@ -47,18 +47,34 @@ endfunction
 " }}}
 
 " diagnostics {{{
+
+" private {{{
+function! s:position_compare(pos0, pos1) abort
+    if a:pos0.line > a:pos1.line
+        return 1
+    elseif a:pos0.line < a:pos1.line
+        return -1
+    elseif a:pos0.character > a:pos1.character
+        return 1
+    elseif a:pos0.character < a:pos1.character
+        return -1
+    else
+        return 0
+    endif
+endfunction
+
 let s:diagnostic_ns_id = 0
 
-
-let g:ddlsc_diagnostics_vtext = get(g:, 'ddlsc_diagnostics_virtual_text', 0)
-let g:ddlsc_diagnostics_sign = get(g:, 'ddlsc_diagnostics_virtual_text', 1)
+let g:ddlsc_diagnostics_sign = get(g:, 'ddlsc_diagnostics_sign', 1)
+let g:ddlsc_diagnostics_highlight = get(g:, 'ddlsc_diagnostics_highlight', 1)
+let g:ddlsc_diagnostics_vtext = get(g:, 'ddlsc_diagnostics_vtext', 1)
 
 let s:DiagnosticSeverity = {
-            \ '0': ['Unknown', 'Error'],
-            \ '1': ['Error', 'Error'],
-            \ '2': ['Warning', 'Search'],
-            \ '3': ['Information', 'WildMenu'],
-            \ '4': ['Hint', 'StatusLineNC'],
+            \ '0': ['Unknown', 'Error', 'ddlsc_error'],
+            \ '1': ['Error', 'Error', 'ddlsc_error'],
+            \ '2': ['Warning', 'Search', 'ddlsc_warning'],
+            \ '3': ['Information', 'WildMenu', 'ddlsc_information'],
+            \ '4': ['Hint', 'StatusLineNC', 'ddlsc_hint'],
             \ }
 
 function! s:split_range(range)
@@ -76,51 +92,6 @@ function! s:split_range(range)
     return l:list
 endfunction
 
-function! lsc#diagnostics#handle_diagnostics(fh) abort
-    if s:diagnostic_ns_id == 0
-        let s:diagnostic_ns_id = nvim_create_namespace('ddlsc_diagnostic')
-        call s:sign_define()
-    else
-        call a:fh.set_virtual_text(s:diagnostic_ns_id, -1, [])
-        call s:sign_unplace(a:fh._buf)
-    endif
-
-    let l:diagnostics = deepcopy(get(a:fh, '_diagnostics'))
-    if empty(l:diagnostics)
-        return
-    endif
-
-    let l:dict = {}
-    for l:diag in l:diagnostics
-        let l:line = l:diag['range']['start']['line']
-        let l:dict[l:line] = add(get(l:dict, l:line, []), l:diag)
-    endfor
-
-    for [l:line, l:diags] in items(l:dict)
-        call sort(l:diags, {x, y -> x['range']['start']['character'] - y['range']['start']['character']})
-
-        let l:chunks = []
-        for l:diag in l:diags
-            let l:severity = get(s:DiagnosticSeverity, get(l:diag, 'severity'))
-            for [l:line, l:sc, l:ec] in s:split_range(l:diag['range'])
-                call a:fh.add_highlight(s:diagnostic_ns_id, l:line, l:severity[1], l:sc, l:ec)
-            endfor
-            call add(l:chunks, [
-                        \ printf(' -> [%s]:[%s]: %s', get(l:diag, 'source', 'NA'), l:severity[0], l:diag['message']),
-                        \ l:severity[1],
-                        \ ]
-                        \ )
-        endfor
-        if g:ddlsc_diagnostics_vtext
-            call a:fh.set_virtual_text(s:diagnostic_ns_id, str2nr(l:line), l:chunks)
-        endif
-        " TODO: Get the highest severity
-        if g:ddlsc_diagnostics_sign
-            call s:sign_place(a:fh._buf, [[str2nr(line), 'ddlsc_error']])
-        endif
-    endfor
-endfunction
-
 function! s:Diagnostic_to_locinfo(buf, diag)
     let l:line = a:diag['range']['start']['line'] + 1
     let l:col = a:diag['range']['start']['character'] + 1
@@ -128,21 +99,77 @@ function! s:Diagnostic_to_locinfo(buf, diag)
     let l:text = printf(' -> [%s]:[%s]: %s', get(a:diag, 'source', 'NA'), get(s:DiagnosticSeverity, get(a:diag, 'severity'))[0], a:diag['message'])
     return {'bufnr': a:buf, 'lnum': l:line, 'col': l:col, 'text': l:text}
 endfunction
+" }}}
 
-function! lsc#diagnostics#list_diagnostics(fh) abort
-    let l:diagnostics = deepcopy(get(a:fh, '_diagnostics'))
+" public {{{
+
+" lsc#diagnostics#show {{{
+function! lsc#diagnostics#show(fh) abort
+    if s:diagnostic_ns_id == 0
+        let s:diagnostic_ns_id = nvim_create_namespace('ddlsc_diagnostic')
+        call s:sign_define()
+    else
+        call a:fh.set_virtual_text(s:diagnostic_ns_id, -1, [])
+        call s:sign_unplace(a:fh._buf)
+    endif
+    if g:ddlsc_diagnostics_vtext == 0 && g:ddlsc_diagnostics_sign == 0
+        return
+    endif
+
+    let l:diagnostics = a:fh._diagnostics[1]
     if empty(l:diagnostics)
         return
     endif
-    call map(l:diagnostics, {_, diag -> s:Diagnostic_to_locinfo(a:fh._buf, diag)})
+
+    for [l:line, l:diags] in items(l:diagnostics)
+
+        let l:highest_severity = get(l:diags[0], 'severity')
+        let l:chunks = []
+
+        for l:diag in l:diags
+            if l:diag.severity <= l:highest_severity
+                let l:highest_severity = l:diag.severity
+            endif
+            if g:ddlsc_diagnostics_highlight
+                let l:severity = get(s:DiagnosticSeverity, get(l:diag, 'severity'))
+                for [l:lnum, l:sc, l:ec] in s:split_range(l:diag['range'])
+                    call a:fh.add_highlight(s:diagnostic_ns_id, l:lnum, l:severity[1], l:sc, l:ec)
+                endfor
+            endif
+            if g:ddlsc_diagnostics_vtext
+                call add(l:chunks,[printf(' -> [%s]:[%s]: %s', get(l:diag, 'source', 'NA'), l:severity[0], l:diag['message']), l:severity[1]])
+            endif
+        endfor
+        if g:ddlsc_diagnostics_vtext
+            call a:fh.set_virtual_text(s:diagnostic_ns_id, str2nr(l:line), l:chunks)
+        endif
+
+        if g:ddlsc_diagnostics_sign
+            call s:sign_place(a:fh._buf, [[str2nr(line), get(s:DiagnosticSeverity, get(l:diag, 'severity'))[2]]])
+        endif
+    endfor
+endfunction
+" }}}
+
+" {{{
+function! lsc#diagnostics#list_diagnostics(fh) abort
+    let l:diagnostics =a:fh._diagnostics[0]
+    if empty(l:diagnostics)
+        return
+    endif
+    let l:locs = []
+    for l:diag in l:diagnostics
+        call add(l:locs, s:Diagnostic_to_locinfo(a:fh._buf, l:diag))
+    endfor
     call setloclist(0, l:diagnostics)
-    call lsc#locations#locations_ui(1)
+    call lsc#locations#locations_ui(0)
 endfunction
 
 function! lsc#diagnostics#list_workspace_diagnostics(fhs) abort
     let l:locs = []
+
     for l:fh in values(a:fhs)
-        let l:diagnostics = deepcopy(get(l:fh, '_diagnostics'))
+        let l:diagnostics =l:fh._diagnostics[0]
         if empty(l:diagnostics)
             continue
         endif
@@ -156,6 +183,67 @@ function! lsc#diagnostics#list_workspace_diagnostics(fhs) abort
     endif
 
     call setloclist(0, l:locs)
-    call lsc#locations#locations_ui(1)
+    call lsc#locations#locations_ui(0)
 endfunction
+
+" {{{
+function! lsc#diagnostics#prev(fh, line, character) abort
+    let l:diagnostics = a:fh._diagnostics[0]
+
+    if empty(l:diagnostics)
+        return
+    endif
+
+    let l:to = l:diagnostics[-1]['range']['start']
+    let l:cur = {'line': a:line, 'character': a:character}
+
+    for l:diag in a:fh._diagnostics
+        let l:pos = l:diag['range']['end']
+        if s:position_compare(l:cur, l:pos) > 0
+            let l:to = l:diag['range']['start']
+            break
+        endif
+    endfor
+    call setpos('.', [a:fh._buf, l:to['line'] + 1, l:to['character'] + 1, 0])
+endfunction
+
+function! lsc#diagnostics#next(fh, line, character) abort
+    let l:diagnostics = a:fh._diagnostics[0]
+
+    if empty(l:diagnostics)
+        return
+    endif
+
+    let l:to = l:diagnostics[0]['range']['start']
+    let l:cur = {'line': a:line, 'character': a:character}
+
+    for l:diag in a:fh._diagnostics
+        let l:pos = l:diag['range']['start']
+        if s:position_compare(l:cur, l:pos) < 0
+            let l:to = l:pos
+            break
+        endif
+    endfor
+    call setpos('.', [a:fh._buf, l:to['line'] + 1, l:to['character'] + 1, 0])
+endfunction
+
+
+function! lsc#diagnostics#update(fh, diagnostics) abort
+    if empty(a:diagnostics)
+        let a:fh._diagnostics[0] = []
+        let a:fh._diagnostics[1] = {}
+        return
+    endif
+
+    call sort(a:diagnostics, {d0, d1 -> s:position_compare(d0['range']['start'], d1['range']['start'])})
+    let a:fh._diagnostics[0] = a:diagnostics
+
+    for l:diag in a:diagnostics
+        let l:line = l:diag['range']['start']['line']
+        let a:fh._diagnostics[1][l:line] = add(get(a:fh._diagnostics[1], l:line, []), l:diag)
+    endfor
+endfunction
+" }}}
+" }}}
+" }}}
 " }}}

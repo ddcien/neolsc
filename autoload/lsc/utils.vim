@@ -37,7 +37,6 @@ function! lsc#utils#get_visual_selection_pos() abort
     return [line_start, column_start, line_end, len(lines[-1])]
 endfunction
 
-
 function! lsc#utils#get_TextDocumentPositionParams() abort
     let [l:bufnum, l:lnum, l:col, l:off, l:curswant] = getcurpos()
     return {
@@ -46,6 +45,30 @@ function! lsc#utils#get_TextDocumentPositionParams() abort
                 \ }
 endfunction
 
+
+
+
 function! lsc#utils#get_TextDocumentItem() abort
 endfunction
 " }}}
+"
+" LSP utils {{{
+function! lsc#utils#position_compare(pos0, pos1) abort
+    if a:pos0.line > a:pos1.line
+        return 1
+    elseif a:pos0.line < a:pos1.line
+        return -1
+    elseif a:pos0.character > a:pos1.character
+        return 1
+    elseif a:pos0.character < a:pos1.character
+        return -1
+    else
+        return 0
+    endif
+endfunction
+
+function! lsc#utils#range_contains(big_range, small_range) abort
+    return lsc#utils#position_compare(a:big_range['start'], a:small_range['start']) <= 0 && lcs#utils#position_compare(a:big_range['end'], a:small_range['end']) >= 0
+endfunction
+" }}}
+" 
