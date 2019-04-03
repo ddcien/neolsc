@@ -1,3 +1,5 @@
+" vim: set foldmethod=marker foldlevel=0 nomodeline:
+"
 if exists('g:lsc_loaded')
     finish
 endif
@@ -8,6 +10,32 @@ let g:lsc_log_file = get(g:, 'lsc_log_file', '/tmp/lsc.log')
 let g:lsc_auto_enable = get(g:, 'lsc_auto_enable', 0)
 let g:lsc_sort_locations = get(g:, 'lsc_sort_locations', 1)
 
+" hover settings {{{
+" lsc_hover_extra_info: Bool
+"   v:true: add extra info to hover infomation
+"   v:false: show the orignal infomation
+"   default: v:true
+let g:lsc_hover_extra_info = get(g:, 'lsc_hover_extra_info', v:false)
+
+" lsc_hover_floating_window: Bool
+"   v:true: show hover infomation in floating window
+"   v:false: show hover infomation in preview window
+"   default: v:true
+let g:lsc_hover_floating_window = get(g:, 'lsc_hover_floating_window', v:true)
+
+" lsc_hover_preview_direction: String
+"   The direction of the preview window, one of ['top', 'bottom', 'left',
+"   'right'], only used when lsc_hover_floating_window is v:false
+"   default: 'top'
+let g:lsc_hover_preview_direction = get(g:, 'lsc_hover_preview_direction', 'top')
+
+" lsc_hover_preview_size: Number
+"   the initial size of the preview window, if lsc_hover_preview_direction is
+"   'top' or 'bottom', it means the hight; otherwise, the width of the preview
+"   window. only used when lsc_hover_floating_window is v:false
+"   default: 12
+let g:lsc_hover_preview_size = get(g:, 'lsc_hover_preview_size', 12)
+" }}}
 
 " lsc_diag_strategy:
 "     0: disable, never show diags

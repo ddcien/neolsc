@@ -141,6 +141,22 @@ function! s:on_text_changed_p()
     echom printf('%d: <%s>', pumvisible(), l:char)
 endfunction
 
+
+function! s:on_cursor_moved()
+    if !exists('s:last_position')
+        let s:last_position = {'buffer': bufnr('%'), 'line': line('.'), 'col': col('.')}
+    endif
+    let l:current_position = {'buffer': bufnr('%'), 'line': line('.'), 'col': col('.')}
+
+    if s:last_position['buffer'] != l:current_position['buffer'] ||
+                \ s:last_position['line'] != l:current_position['line'] ||
+                \ s:last_position['col'] != l:current_position['col']
+
+        let s:last_position = copy(l:current_position)
+        call lsc#hover#clear()
+    endif
+endfunction
+
 function! s:register_events() abort
     augroup register_events
         autocmd!
@@ -150,9 +166,10 @@ function! s:register_events() abort
         autocmd BufWritePre * if has_key(s:servers_whitelist, &filetype) |  call s:on_text_document_did_will_save() | endif
         autocmd BufWritePost * if has_key(s:servers_whitelist, &filetype) |  call s:on_text_document_did_save() | endif
         autocmd BufUnload * if has_key(s:servers_whitelist, &filetype) | call s:on_text_document_did_close() | endif
-        autocmd CursorHold * if has_key(s:servers_whitelist, &filetype) | call lsc#textDocument_documentHighlight() | endif
         autocmd TextChangedI * if has_key(s:servers_whitelist, &filetype) | call s:on_text_changed_i() | endif
         autocmd TextChangedP * if has_key(s:servers_whitelist, &filetype) | call s:on_text_changed_p() | endif
+        autocmd CursorHold * if has_key(s:servers_whitelist, &filetype) | call lsc#textDocument_documentHighlight() | endif
+        autocmd CursorMoved * if has_key(s:servers_whitelist, &filetype) | call s:on_cursor_moved() | endif
 
         autocmd FileType c,cpp,python setlocal omnifunc=lsc#complete
     augroup END
