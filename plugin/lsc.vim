@@ -191,4 +191,4 @@ inoremap <silent> <expr> <Plug>(lsc-complete) lsc#textDocument_completion()
 let s:key = '<TAB>'
 exe 'inoremap <expr>' . s:key . ' pumvisible() ? "\<C-n>" : "\' . s:key .'"'
 
-inoremap <c-space> <Plug>(lsc-complete)
+imap <c-space> <Plug>(lsc-complete)

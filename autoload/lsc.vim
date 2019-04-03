@@ -123,7 +123,7 @@ function! s:on_text_changed_i() abort
         call l:server.textDocument_signatureHelp(l:buf_nr, line('.') - 1, col('.') - 1)
     elseif index(lsc#capabilities#documentOnTypeFormatting_triggerCharacters(l:server.capabilities), l:char) >= 0
         call l:server.textDocument_onTypeFormatting(l:buf_nr, line('.') - 1, col('.') - 1)
-    elseif col('.') - s:enter_position[2] > 100000
+    elseif col('.') - s:enter_position[2] > 3
         call l:server.textDocument_completion(l:buf_nr, line('.') - 1, col('.') - 1, 1, '')
     endif
     redraws
