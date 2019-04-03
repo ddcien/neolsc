@@ -51,7 +51,7 @@ function! lsc#skippedranges#handle_skipped_ranges(fh, ranges) abort
             continue
         endif
 
-        call execute(printf("%d,%dfo", l:range['start']['line'] + 1, l:range['end']['line']))
+        call execute(printf('%d,%dfo', l:range['start']['line'] + 1, l:range['end']['line']))
     endfor
 endfunction
 
