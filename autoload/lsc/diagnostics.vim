@@ -104,6 +104,38 @@ endfunction
 " public {{{
 
 " lsc#diagnostics#show {{{
+function! lsc#diagnostics#show_line(fh, line) abort
+    let l:diags = get(a:fh._diagnostics[1], a:line)
+    if empty(l:diags)
+        return
+    endif
+
+    let l:highest_severity = get(l:diags[0], 'severity')
+    let l:chunks = []
+
+    for l:diag in l:diags
+        if l:diag.severity <= l:highest_severity
+            let l:highest_severity = l:diag.severity
+        endif
+        if g:ddlsc_diagnostics_highlight
+            let l:severity = get(s:DiagnosticSeverity, get(l:diag, 'severity'))
+            for [l:lnum, l:sc, l:ec] in s:split_range(l:diag['range'])
+                call a:fh.add_highlight(s:diagnostic_ns_id, l:lnum, l:severity[1], l:sc, l:ec)
+            endfor
+        endif
+        if g:ddlsc_diagnostics_vtext
+            call add(l:chunks,[printf(' -> [%s]:[%s]: %s', get(l:diag, 'source', 'NA'), l:severity[0], l:diag['message']), l:severity[1]])
+        endif
+    endfor
+    if g:ddlsc_diagnostics_vtext
+        call a:fh.set_virtual_text(s:diagnostic_ns_id, str2nr(a:line), l:chunks)
+    endif
+
+    if g:ddlsc_diagnostics_sign
+        call s:sign_place(a:fh._buf, [[str2nr(a:line), get(s:DiagnosticSeverity, get(l:diag, 'severity'))[2]]])
+    endif
+endfunction
+
 function! lsc#diagnostics#show(fh) abort
     if s:diagnostic_ns_id == 0
         let s:diagnostic_ns_id = nvim_create_namespace('ddlsc_diagnostic')
@@ -121,32 +153,8 @@ function! lsc#diagnostics#show(fh) abort
         return
     endif
 
-    for [l:line, l:diags] in items(l:diagnostics)
-
-        let l:highest_severity = get(l:diags[0], 'severity')
-        let l:chunks = []
-
-        for l:diag in l:diags
-            if l:diag.severity <= l:highest_severity
-                let l:highest_severity = l:diag.severity
-            endif
-            if g:ddlsc_diagnostics_highlight
-                let l:severity = get(s:DiagnosticSeverity, get(l:diag, 'severity'))
-                for [l:lnum, l:sc, l:ec] in s:split_range(l:diag['range'])
-                    call a:fh.add_highlight(s:diagnostic_ns_id, l:lnum, l:severity[1], l:sc, l:ec)
-                endfor
-            endif
-            if g:ddlsc_diagnostics_vtext
-                call add(l:chunks,[printf(' -> [%s]:[%s]: %s', get(l:diag, 'source', 'NA'), l:severity[0], l:diag['message']), l:severity[1]])
-            endif
-        endfor
-        if g:ddlsc_diagnostics_vtext
-            call a:fh.set_virtual_text(s:diagnostic_ns_id, str2nr(l:line), l:chunks)
-        endif
-
-        if g:ddlsc_diagnostics_sign
-            call s:sign_place(a:fh._buf, [[str2nr(line), get(s:DiagnosticSeverity, get(l:diag, 'severity'))[2]]])
-        endif
+    for l:line in keys(l:diagnostics)
+        call lsc#diagnostics#show_line(a:fh, l:line)
     endfor
 endfunction
 " }}}
