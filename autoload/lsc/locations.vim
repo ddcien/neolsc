@@ -36,7 +36,7 @@ function! s:locations_to_qf_list(locations) abort
         let l:line = l:loc['range']['start']['line']
         let l:col = l:loc['range']['start']['character']
         let l:buf = bufnr(l:path)
-        if l:buf < 0
+        if l:buf < 0 || !nvim_buf_is_loaded(l:buf)
             if !has_key(l:cache, l:path)
                 let l:cache[l:path] = readfile(l:path)
             endif
