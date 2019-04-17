@@ -51,19 +51,30 @@ function! neolsc#ui#general#start(name, settings)
 
     call l:server.register_notification_hook('textDocument/publishDiagnostics', function('neolsc#ui#diagnostics#publishDiagnostics_handler'))
 
+
     call l:server.register_notification_hook('$ccls/publishSemanticHighlight', function('neolsc#ui#highlight#semantic_draw'))
     call l:server.register_notification_hook('$ccls/publishSkippedRanges', function('neolsc#ui#highlight#skipped_draw'))
-
     call neolsc#ui#workspace#executeCommandRegister('ccls.xref', {server, response, command -> neolsc#ui#location#show('ccls.xref', neolsc#ui#location#to_location_list(get(response, 'result', []), v:false), v:true)})
+
+
+    let l:root_path = getcwd()
+    let l:root_name = fnamemodify(l:root_path, ':t:r')
+    let l:root_uri = neolsc#utils#uri#path_to_uri(l:root_path)
 
     let l:init_params = json_decode(readfile(s:_neolsc_default_init_file))
     call extend(l:init_params.initializationOptions, get(a:settings, 'initialization_options', {}))
     let l:init_params['processId'] = getpid()
-    let l:init_params['rootPath'] = getcwd()
-    let l:init_params['rootUri'] = neolsc#utils#uri#path_to_uri(getcwd())
-    call add(l:init_params['workspaceFolders'], {'uri': l:init_params['rootUri'], 'name': fnamemodify(getcwd(), ':t:r')})
+    let l:init_params['rootPath'] = l:root_path
+    let l:init_params['rootUri'] = l:root_uri
+    call add(l:init_params['workspaceFolders'], {'uri': l:root_uri, 'name': l:root_name})
 
     call l:server.initialize(l:init_params)
+
+    call neolsc#ui#workspace#addFolderLocal(l:root_name, l:root_path, a:name)
+    if has_key(a:settings, 'workspace_settings')
+        call neolsc#ui#workspace#configuration(a:name, a:settings['workspace_settings'])
+    endif
+
     let s:_neolsc_server_list[a:name] = l:server
 endfunction
 

@@ -1,23 +1,18 @@
 " vim: set foldmethod=marker foldlevel=0 nomodeline:
 
-" {
-"     'name': string
-"     'path': string
-"     'server_list': []string
-" }
 " let s:_neolsc_current_workspace = {
             " \ 'server_list' : {'ccls': 1, 'cquery':1, 'pyls':1, 'rls':1},
             " \ 'folder_list' : {
             " \     'fold0': {
-            " \         'path': 'path0',
+            " \         'uri': 'path0',
             " \         'server_list' : ['ccls', 'cquery', 'pyls', 'rls'],
             " \     },
             " \     'fold1': {
-            " \         'path': 'path1',
+            " \         'uri': 'path1',
             " \         'server_list' : ['ccls', 'cquery', 'pyls', 'rls'],
             " \     },
             " \     'fold2': {
-            " \         'path': 'path2',
+            " \         'uri': 'path2',
             " \         'server_list' : ['ccls', 'cquery', 'pyls', 'rls'],
             " \     },
             " \ }
@@ -29,32 +24,40 @@ let s:_neolsc_current_workspace = {
             \ }
 
 " notification to server {{{
-function! neolsc#ui#workspace#configuration(name, settings)
-    for l:server_name in keys(s:_neolsc_current_workspace['server_list'])
-        let l:server = neolsc#ui#general#get_server(l:server_name)
-        let l:configuration = get(a:settings, l:server_name)
-        if !empty(l:configuration)
-            call neolsc#lsp#workspace#didChangeConfiguration(l:server, l:configuration)
-        endif
-    endfor
-endfunction
-
-function! neolsc#ui#workspace#addFolder(name, path, servers) abort
-    let l:folder = get(s:_neolsc_current_workspace['folder_list'], a:name)
-    if !empty(l:folder)
+function! neolsc#ui#workspace#configuration(server, configuration)
+    if empty(a:configuration)
         return
     endif
+    let l:server = neolsc#ui#general#get_server(a:server)
+    call neolsc#lsp#workspace#didChangeConfiguration(l:server, a:configuration)
+endfunction
 
-    for l:server_name in a:servers
-        if has_key(s:_neolsc_current_workspace['server_list'], l:server_name)
-            let s:_neolsc_current_workspace['server_list'][l:server_name] += 1
-        else
-            let s:_neolsc_current_workspace['server_list'][l:server_name] = 1
-        endif
-        let l:server = neolsc#ui#general#get_server(l:server_name)
-        call neolsc#lsp#workspace#didChangeWorkspaceFolders(l:server, [{'name': a:name, 'path': a:path}], [])
-    endfor
-    let s:_neolsc_current_workspace['folder_list'][a:name] = {'path': a:path, 'server_list': a:servers}
+function! neolsc#ui#workspace#addFolderLocal(name, path, server) abort
+    let l:folder = get(s:_neolsc_current_workspace['folder_list'], a:name)
+    if !empty(l:folder) && index(l:folder['server_list'], a:server) >= 0
+        return 0
+    endif
+
+    if has_key(s:_neolsc_current_workspace['server_list'], a:server)
+        let s:_neolsc_current_workspace['server_list'][a:server] += 1
+    else
+        let s:_neolsc_current_workspace['server_list'][a:server] = 1
+    endif
+
+    if empty(l:folder)
+        let s:_neolsc_current_workspace['folder_list'][a:name] = {'uri':  neolsc#utils#uri#path_to_uri(a:path), 'server_list': [a:server]}
+    else
+        call add(s:_neolsc_current_workspace['folder_list'][a:name]['server_list'], a:server)
+    endif
+    return 1
+endfunction
+
+function! neolsc#ui#workspace#addFolder(name, path, server) abort
+    if !neolsc#ui#workspace#addFolderLocal(a:name, a:path, a:server)
+        return
+    endif
+    let l:server = neolsc#ui#general#get_server(a:server)
+    call neolsc#lsp#workspace#didChangeWorkspaceFolders(l:server, [{'name': a:name, 'uri': neolsc#utils#uri#path_to_uri(a:path)}], [])
 endfunction
 
 function! neolsc#ui#workspace#remove(name) abort
@@ -69,7 +72,7 @@ function! neolsc#ui#workspace#remove(name) abort
             call remove(s:_neolsc_current_workspace['server_list'], l:server_name)
         endif
         let l:server = neolsc#ui#general#get_server(l:server_name)
-        call neolsc#lsp#workspace#didChangeWorkspaceFolders(l:server, [], [{'name': a:name, 'path': l:folder['path']}])
+        call neolsc#lsp#workspace#didChangeWorkspaceFolders(l:server, [], [{'name': a:name, 'uri': l:folder['uri']}])
     endfor
 
     call remove(s:_neolsc_current_workspace['folder_list'], a:name)
@@ -80,17 +83,17 @@ endfunction
 " 3: 'Deleted',
 function! neolsc#ui#workspace#file_create(path) abort
     let l:server = neolsc#ui#general#path_to_server(a:path)
-    call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'path': a:path, 'event': 1}])
+    call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'uri': neolsc#utils#uri#path_to_uri(a:path), 'event': 1}])
 endfunction
 
 function! neolsc#ui#workspace#file_change(path) abort
     let l:server = neolsc#ui#general#path_to_server(a:path)
-    call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'path': a:path, 'event': 2}])
+    call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'uri': neolsc#utils#uri#path_to_uri(a:path), 'event': 2}])
 endfunction
 
 function! neolsc#ui#workspace#file_delete(path) abort
     let l:server = neolsc#ui#general#path_to_server(a:path)
-    call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'path': a:path, 'event': 3}])
+    call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'uri': neolsc#utils#uri#path_to_uri(a:path), 'event': 3}])
 endfunction
 " }}}
 
