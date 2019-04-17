@@ -57,7 +57,9 @@ function! neolsc#ui#workspace#addFolder(name, path, server) abort
         return
     endif
     let l:server = neolsc#ui#general#get_server(a:server)
-    call neolsc#lsp#workspace#didChangeWorkspaceFolders(l:server, [{'name': a:name, 'uri': neolsc#utils#uri#path_to_uri(a:path)}], [])
+    if l:server.capabilities_workspace()
+        call neolsc#lsp#workspace#didChangeWorkspaceFolders(l:server, [{'name': a:name, 'uri': neolsc#utils#uri#path_to_uri(a:path)}], [])
+    endif
 endfunction
 
 function! neolsc#ui#workspace#remove(name) abort
@@ -72,7 +74,9 @@ function! neolsc#ui#workspace#remove(name) abort
             call remove(s:_neolsc_current_workspace['server_list'], l:server_name)
         endif
         let l:server = neolsc#ui#general#get_server(l:server_name)
-        call neolsc#lsp#workspace#didChangeWorkspaceFolders(l:server, [], [{'name': a:name, 'uri': l:folder['uri']}])
+        if l:server.capabilities_workspace()
+            call neolsc#lsp#workspace#didChangeWorkspaceFolders(l:server, [], [{'name': a:name, 'uri': l:folder['uri']}])
+        endif
     endfor
 
     call remove(s:_neolsc_current_workspace['folder_list'], a:name)
@@ -83,17 +87,23 @@ endfunction
 " 3: 'Deleted',
 function! neolsc#ui#workspace#file_create(path) abort
     let l:server = neolsc#ui#general#path_to_server(a:path)
-    call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'uri': neolsc#utils#uri#path_to_uri(a:path), 'event': 1}])
+    if l:server.capabilities_workspace_changeNotifications()
+        call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'uri': neolsc#utils#uri#path_to_uri(a:path), 'event': 1}])
+    endif
 endfunction
 
 function! neolsc#ui#workspace#file_change(path) abort
     let l:server = neolsc#ui#general#path_to_server(a:path)
-    call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'uri': neolsc#utils#uri#path_to_uri(a:path), 'event': 2}])
+    if l:server.capabilities_workspace_changeNotifications()
+        call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'uri': neolsc#utils#uri#path_to_uri(a:path), 'event': 2}])
+    endif
 endfunction
 
 function! neolsc#ui#workspace#file_delete(path) abort
     let l:server = neolsc#ui#general#path_to_server(a:path)
-    call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'uri': neolsc#utils#uri#path_to_uri(a:path), 'event': 3}])
+    if l:server.capabilities_workspace_changeNotifications()
+        call neolsc#lsp#workspace#didChangeWatchedFiles(l:server, [{'uri': neolsc#utils#uri#path_to_uri(a:path), 'event': 3}])
+    endif
 endfunction
 " }}}
 

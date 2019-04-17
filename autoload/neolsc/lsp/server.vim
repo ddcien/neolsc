@@ -212,7 +212,7 @@ function! s:server.is_initialized() abort
     return self._jobid > 0 && self._initialized
 endfunction
 
-function! s:server._handle_initialize(response) abort
+function! s:server._handle_initialize(server, response) abort
     let l:result = get(a:response, 'result')
     if empty(l:result)
         let self._initialized = v:false
@@ -230,7 +230,7 @@ function! s:server.initialize(params) abort
 
     call self.send_request_sync(
                 \ {'method': 'initialize', 'params': a:params},
-                \ {server, response -> self._handle_initialize(response)}
+                \ {server, response -> self._handle_initialize(server, response)}
                 \ )
     call self.send_notification({'method': 'initialized', 'params': {}})
 endfunction
@@ -452,6 +452,24 @@ endfunction
 function! s:server.capabilities_executeCommand() abort
     let l:provider = get(self._capabilities, 'executeCommandProvider', {})
     return empty(l:provider) ? [] : get(l:provider, 'commands', [])
+endfunction
+" }}}
+
+" workspace {{{
+function! s:server.capabilities_workspace() abort
+    let l:workspace = get(self._capabilities, 'workspace')
+    if empty(l:workspace)
+        return v:false
+    endif
+    return get(l:workspace, 'supported', v:false)
+endfunction
+
+function! s:server.capabilities_workspace_changeNotifications() abort
+    let l:workspace = get(self._capabilities, 'workspace')
+    if empty(l:workspace)
+        return v:false
+    endif
+    return get(l:workspace, 'changeNotifications', v:false)
 endfunction
 " }}}
 " }}}
