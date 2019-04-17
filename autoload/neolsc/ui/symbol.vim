@@ -1,6 +1,5 @@
 " vim: set foldmethod=marker foldlevel=0 nomodeline:
 
-" symbols {{{
 let s:symbol_kinds = {
             \ '1': 'File',
             \ '2': 'Module',
@@ -32,10 +31,10 @@ let s:symbol_kinds = {
 
 function! s:SymbolInformation_to_locinfo(sym) abort
     let l:loc = a:sym.location
-    let l:path = lsc#uri#uri_to_path(l:loc.uri)
+    let l:path = neolsc#utils#uri#uri_to_path(l:loc.uri)
     let l:line = l:loc['range']['start']['line']
     let l:col = l:loc['range']['start']['character']
-    let l:text = ' ->: ' . get(s:symbol_kinds, a:sym.kind, 'Unknown[' . string(a:sym.kind) . ']') . ':' . get(a:sym, 'containerName', a:sym.name)
+    let l:text = ' ->: ' . get(s:symbol_kinds, a:sym.kind, 'Unknown[' . string(a:sym.kind) . ']') . ':' . a:sym.name
     return {'filename': l:path, 'lnum': l:line + 1, 'col': l:col + 1, 'text': l:text}
 endfunction
 
@@ -43,20 +42,35 @@ function! s:DocumentSymbol_to_locinfo(buf, sym) abort
     let l:line = a:sym['range']['start']['line']
     let l:col = a:sym['range']['start']['character']
     let l:text = ' ->: '. get(s:symbol_kinds, a:sym.kind, 'Unknown[' . string(a:sym.kind) . ']') . ':' . get(a:sym, 'detail', a:sym.name)
-    return {'bufnr': a:buf, 'lnum': l:line + 1, 'col': l:col + 1, 'text': l:text}
+    return {'filename': bufname(a:buf), 'lnum': l:line + 1, 'col': l:col + 1, 'text': l:text}
 endfunction
 
-function! lsc#symbols#handle_symbols(buf, response) abort
-    let l:symbols = a:response.result
-    if empty(l:symbols)
+
+function! neolsc#ui#symbol#workspace_symbol_handler(ctx)
+    call assert_equal(0, a:ctx['server_count'])
+    let l:location_list = []
+    for [l:server_name, l:symbol_list] in items(a:ctx['server_list'])
+        for l:symbol in l:symbol_list
+            call add(l:location_list, s:SymbolInformation_to_locinfo(l:symbol))
+        endfor
+    endfor
+    if empty(l:location_list)
         return
     endif
-    if has_key(l:symbols[0], 'location')
-        call map(l:symbols, {_, sym -> s:SymbolInformation_to_locinfo(sym)})
-    else
-        call map(l:symbols, {_, sym -> s:DocumentSymbol_to_locinfo(a:buf, sym)})
-    endif
-    call setloclist(0, l:symbols)
-    call lsc#locations#locations_ui(1)
+    call neolsc#ui#location#show('WorkspaceSymbol', l:location_list, v:false)
 endfunction
-" }}}
+
+function! neolsc#ui#symbol#textDocument_symbol_handler(buf, symbol_list)
+    let l:location_list = []
+    for l:symbol in a:symbol_list
+        if has_key(l:symbol, 'location')
+            call add(l:location_list, s:SymbolInformation_to_locinfo(l:symbol))
+        else
+            call add(l:location_list, s:DocumentSymbol_to_locinfo(a:buf, l:symbol))
+        endif
+    endfor
+    if empty(l:location_list)
+        return
+    endif
+    call neolsc#ui#location#show('DocumentSymbol', l:location_list, v:false)
+endfunction

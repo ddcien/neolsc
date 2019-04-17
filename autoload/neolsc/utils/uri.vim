@@ -1,9 +1,17 @@
-function! s:get_prefix(path) abort
-    return matchstr(a:path, '\(^\w\+::\|^\w\+://\)')
+" vim: set foldmethod=marker foldlevel=0 nomodeline:
+
+
+function! s:decode_uri(uri) abort
+    let l:ret = substitute(a:uri, '[?#].*', '', '')
+    return substitute(l:ret, '%\(\x\x\)', '\=printf("%c", str2nr(submatch(1), 16))', 'g')
 endfunction
 
 function! s:urlencode_char(c) abort
     return printf('%%%02X', char2nr(a:c))
+endfunction
+
+function! s:get_prefix(path) abort
+    return matchstr(a:path, '\(^\w\+::\|^\w\+://\)')
 endfunction
 
 function! s:encode_uri(path, start_pos_encode, default_prefix) abort
@@ -27,19 +35,14 @@ function! s:encode_uri(path, start_pos_encode, default_prefix) abort
     return l:prefix . l:result
 endfunction
 
-function! s:decode_uri(uri) abort
-    let l:ret = substitute(a:uri, '+', ' ', 'g')
-    return substitute(l:ret, '%\(\x\x\)', '\=printf("%c", str2nr(submatch(1), 16))', 'g')
+function! neolsc#utils#uri#path_to_uri(path) abort
+    return s:encode_uri(fnamemodify(a:path, ':p'), 0, 'file://')
 endfunction
 
-function! lsc#uri#path_to_uri(path) abort
-    if empty(a:path)
-        return a:path
-    else
-        return s:encode_uri(a:path, 0, 'file://')
-    endif
+function! neolsc#utils#uri#uri_to_path(uri) abort
+    return fnamemodify(s:decode_uri(a:uri[len('file://'):]), ':.')
 endfunction
 
-function! lsc#uri#uri_to_path(uri) abort
-    return fnamemodify(expand(resolve(s:decode_uri(a:uri[len('file://'):]))), ':~:.')
+function! neolsc#utils#uri#buf_to_uri(buf) abort
+    return neolsc#utils#uri#path_to_uri(bufname(a:buf))
 endfunction
