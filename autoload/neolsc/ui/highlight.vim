@@ -47,6 +47,9 @@ endfunction
 
 function! neolsc#ui#highlight#document_show(buf, highlights) abort
     call neolsc#ui#highlight#document_clear(a:buf)
+    if empty(a:highlights)
+        return
+    endif
     for l:highlight in a:highlights
         let l:hlg = get(s:DocumentHighlightKind, get(l:highlight, 'kind'))[1]
         for [l:line, l:sc, l:ec] in s:_range_split(l:highlight['range'])
