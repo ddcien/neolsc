@@ -13,6 +13,9 @@ endfunction
 
 function! neolsc#ui#general#buf_to_server(buf) abort
     let l:buf_ctx = neolsc#ui#workfile#get(a:buf)
+    if empty(l:buf_ctx)
+        return
+    endif
     return neolsc#ui#general#get_server(l:buf_ctx['_server'])
 endfunction
 

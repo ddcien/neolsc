@@ -20,6 +20,7 @@ function! neolsc#ui#diagnostics#publishDiagnostics_handler(server, notification)
         let l:line = l:diag['range']['start']['line']
         let l:buf_ctx['_diagnostics'][1][l:line] = add(get(l:buf_ctx['_diagnostics'][1], l:line, []), l:diag)
     endfor
+
     call neolsc#ui#vtext#diagnostics_clear_all(l:buf_ctx)
     call neolsc#ui#highlight#diagnostics_show(l:buf)
 endfunction
