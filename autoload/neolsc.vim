@@ -163,4 +163,8 @@ function! neolsc#status() abort
         call neolsc#ui#general#status(l:name)
     endfor
 endfunction
+
+function! neolsc#get_white_list() abort
+    return s:_neolsc_white_list
+endfunction
 " }}}
