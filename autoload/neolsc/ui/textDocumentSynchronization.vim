@@ -4,6 +4,7 @@ function! neolsc#ui#textDocumentSynchronization#didOpen() abort
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     call neolsc#lsp#textDocumentSynchronization#didOpen(l:server, l:buf)
+    call rpcnotify(g:neolsc_channel_id, 'neolsc_monitor_start', l:buf)
 endfunction
 
 function! s:_first(old, new)
@@ -119,5 +120,6 @@ endfunction
 function! neolsc#ui#textDocumentSynchronization#didClose() abort
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
+    call rpcnotify(g:neolsc_channel_id, 'neolsc_monitor_stop', l:buf)
     call neolsc#lsp#textDocumentSynchronization#didClose(l:server, l:buf)
 endfunction

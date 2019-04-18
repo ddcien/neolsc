@@ -36,9 +36,11 @@ function! s:on_text_document_did_open() abort
         autocmd InsertLeave <buffer> call s:on_insert_leave()
         " autocmd TextChangedI <buffer> call s:on_text_chande_i()
         " autocmd CursorMovedI <buffer> call s:on_cursor_moved_i()
+        autocmd BufWipeout <buffer> call neolsc#ui#textDocumentSynchronization#didClose()
         autocmd TextChanged <buffer> call neolsc#ui#textDocumentSynchronization#didChange()
         autocmd BufWritePost <buffer> call neolsc#ui#textDocumentSynchronization#didSave()
     augroup end
+
 endfunction
 
 function! s:on_text_chande_i() abort
@@ -138,6 +140,7 @@ function! neolsc#global_init() abort
         autocmd BufReadPost * call s:on_text_document_did_open()
     augroup end
 
+    call _neolsc_init()
     let s:_neolsc_global_init = 1
 endfunction
 
