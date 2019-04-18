@@ -28,14 +28,20 @@ function! s:on_text_document_did_open() abort
     call neolsc#ui#workfile#add(l:buf, l:server)
     call neolsc#ui#textDocumentSynchronization#didOpen()
 
+    let l:server = neolsc#ui#general#get_server(l:server)
+
+    if server.capabilities_completion()
+        call nvim_buf_set_option(l:buf, 'omnifunc', 'neolsc#ui#completion#omni')
+    endif
+
     augroup neolsc_buffer_events
         autocmd! * <buffer>
         autocmd CursorHold <buffer> call neolsc#ui#textDocument#documentHighlight()
         autocmd CursorMoved <buffer> call s:on_cursor_moved()
         autocmd InsertEnter <buffer> call s:on_insert_enter()
         autocmd InsertLeave <buffer> call s:on_insert_leave()
+        autocmd CursorMovedI <buffer> call s:on_cursor_moved_i()
         " autocmd TextChangedI <buffer> call s:on_text_chande_i()
-        " autocmd CursorMovedI <buffer> call s:on_cursor_moved_i()
         autocmd BufWipeout <buffer> call neolsc#ui#textDocumentSynchronization#didClose()
         autocmd TextChanged <buffer> call neolsc#ui#textDocumentSynchronization#didChange()
         autocmd BufWritePost <buffer> call neolsc#ui#textDocumentSynchronization#didSave()
@@ -44,11 +50,9 @@ function! s:on_text_document_did_open() abort
 endfunction
 
 function! s:on_text_chande_i() abort
-    let l:char = s:_get_current_character()
 endfunction
 
 function! s:on_cursor_moved_i() abort
-    let l:char = s:_get_current_character()
 endfunction
 
 function! s:on_cursor_moved() abort
