@@ -57,6 +57,7 @@ endfunction
 function! s:on_cursor_hold() abort
     let l:current_pos = getcurpos()[1:2]
     if !exists('s:last_pos') || l:current_pos != s:last_pos
+        let s:last_pos = l:current_pos
         call neolsc#ui#textDocument#documentHighlight()
     endif
 endfunction
