@@ -170,6 +170,9 @@ function! neolsc#ui#textDocument#completion() abort
 
     let l:char = s:_get_current_character()
     let l:position = s:_get_current_position()
+    if mode() ==# 'i'
+        call neolsc#ui#textDocumentSynchronization#didChangeBuf(l:buf)
+    endif
     if index(l:server.capabilities_completion_triggerCharacters, l:char) >= 0
         call neolsc#lsp#textDocument#completion(l:server, l:buf, l:position, 2, l:char)
     else
@@ -223,6 +226,9 @@ function! neolsc#ui#textDocument#signatureHelp() abort
     " if index(l:server.capabilities_signatureHelp_triggerCharacters(), l:char) < 0
         " return
     " endif
+    if mode() ==# 'i'
+        call neolsc#ui#textDocumentSynchronization#didChangeBuf(l:buf)
+    endif
     let l:position = s:_get_current_position()
     call neolsc#lsp#textDocument#signatureHelp(l:server, l:buf, l:position)
 endfunction
@@ -630,6 +636,9 @@ function! neolsc#ui#textDocument#onTypeFormatting() abort
 
     let l:position = _get_current_position()
     let l:options = s:_get_formating_option(l:buf)
+    if mode() ==# 'i'
+        call neolsc#ui#textDocumentSynchronization#didChangeBuf(l:buf)
+    endif
     call neolsc#lsp#textDocument#onTypeFormatting(l:server, l:buf, l:position, l:char, l:options)
 endfunction
 " }}}

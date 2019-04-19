@@ -36,7 +36,7 @@ function! neolsc#ui#completion#omni(findstart, base) abort
     let l:char = s:_get_current_character()
     let l:position = s:_get_current_position()
 
-    call neolsc#ui#textDocumentSynchronization#didChange()
+    call neolsc#ui#textDocumentSynchronization#didChangeBuf(l:buf)
     if index(l:server.capabilities_completion_triggerCharacters(), l:char) >= 0
         call neolsc#lsp#textDocument#completion(l:server, l:buf, l:position, 2, l:char)
     else
