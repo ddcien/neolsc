@@ -86,6 +86,9 @@ function! neolsc#ui#textDocument#hover_handler(server, response, buf)
 endfunction
 
 function! neolsc#ui#textDocument#hover() abort
+    if empty(expand('<cword>'))
+        return
+    endif
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     if empty(l:server)
@@ -143,6 +146,9 @@ function! neolsc#ui#textDocument#declaration_handler(server, response, buf)
 endfunction
 
 function! neolsc#ui#textDocument#declaration() abort
+    if empty(expand('<cword>'))
+        return
+    endif
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     if empty(l:server)
@@ -170,6 +176,9 @@ function! neolsc#ui#textDocument#definition_handler(server, response, buf)
 endfunction
 
 function! neolsc#ui#textDocument#definition() abort
+    if empty(expand('<cword>'))
+        return
+    endif
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     if empty(l:server)
@@ -197,6 +206,9 @@ function! neolsc#ui#textDocument#typeDefinition_handler(server, response, buf)
 endfunction
 
 function! neolsc#ui#textDocument#typeDefinition() abort
+    if empty(expand('<cword>'))
+        return
+    endif
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     if empty(l:server)
@@ -224,6 +236,9 @@ function! neolsc#ui#textDocument#implementation_handler(server, response, buf)
 endfunction
 
 function! neolsc#ui#textDocument#implementation() abort
+    if empty(expand('<cword>'))
+        return
+    endif
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     if empty(l:server)
@@ -251,6 +266,9 @@ function! neolsc#ui#textDocument#references_handler(server, response, buf)
 endfunction
 
 function! neolsc#ui#textDocument#references() abort
+    if empty(expand('<cword>'))
+        return
+    endif
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     if empty(l:server)
@@ -271,6 +289,9 @@ function! neolsc#ui#textDocument#documentHighlight_handler(server, response, buf
 endfunction
 
 function! neolsc#ui#textDocument#documentHighlight() abort
+    if empty(expand('<cword>'))
+        return
+    endif
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     if empty(l:server)
@@ -548,6 +569,9 @@ function! neolsc#ui#textDocument#rename_handler(server, response, buf)
 endfunction
 
 function! neolsc#ui#textDocument#rename() abort
+    if empty(expand('<cword>'))
+        return
+    endif
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     if empty(l:server)
@@ -608,6 +632,9 @@ function! neolsc#ui#textDocument#prepareRename_handler(server, response, buf)
 endfunction
 
 function! neolsc#ui#textDocument#prepareRename() abort
+    if empty(expand('<cword>'))
+        return
+    endif
     let l:buf = nvim_get_current_buf()
     let l:server = neolsc#ui#general#buf_to_server(l:buf)
     if empty(l:server)
