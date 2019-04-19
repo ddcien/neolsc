@@ -11,7 +11,9 @@ function! s:format_hover_message_extra(contents) abort
         let l:ft = a:contents.kind ==? 'plaintext' ? 'text' : a:contents.kind
     else
         if type(a:contents) != v:t_list
-            let a:contents = [a:contents]
+            let l:contents = [a:contents]
+        else
+            let l:contents = a:contents
         endif
         for l:content in a:contents
             if type(l:content) == v:t_string
@@ -36,9 +38,11 @@ function! s:format_hover_message(contents) abort
         let l:ft = a:contents.kind ==? 'plaintext' ? 'text' : a:contents.kind
     else
         if type(a:contents) != v:t_list
-            let a:contents = [a:contents]
+            let l:contents = [a:contents]
+        else
+            let l:contents = a:contents
         endif
-        for l:content in a:contents
+        for l:content in l:contents
             if type(l:content) == v:t_string
                 call extend(l:lines,  split(l:content, "\n"))
             else
@@ -142,7 +146,12 @@ function! neolsc#ui#hover#clear() abort
 endfunction
 
 function! neolsc#ui#hover#show(hover) abort
+    call neolsc#ui#hover#clear()
+
     let l:contents = a:hover.contents
+    if empty(l:contents)
+        return
+    endif
 
     if g:lsc_hover_extra_info
         let [l:ft, l:lines] = s:format_hover_message_extra(l:contents)
