@@ -50,7 +50,7 @@ endfunction
 " completion {{{
 function! neolsc#ui#textDocument#completion_handler(server, response, buf)
     let [l:start, l:result] = neolsc#ui#completion#completion_handler(a:server, a:response)
-    call complete(l:start + 1, l:result)
+    call complete(l:start, l:result)
 endfunction
 
 function! neolsc#ui#textDocument#completion() abort
