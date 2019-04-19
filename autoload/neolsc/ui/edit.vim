@@ -119,13 +119,14 @@ function! s:handle_uri_edits(uri, edits) abort
     let l:buf = bufnr(l:path)
 
     if l:buf < 0
-        let l:cmd = 'keepjumps keepalt'
+        let l:cmd = 'keepjumps keepalt silent'
         let l:cmd .= ' edit '.l:path
         execute l:cmd
         let l:buf = bufnr(l:path)
     endif
 
     call s:handle_buf_edits(l:buf, a:edits)
+    call neolsc#ui#textDocumentSynchronization#didChangeBuf(l:buf)
 endfunction
 
 function! s:handle_buf_edits(buf, edits) abort
