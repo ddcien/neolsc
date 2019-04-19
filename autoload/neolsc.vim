@@ -36,23 +36,29 @@ function! s:on_text_document_did_open() abort
 
     augroup neolsc_buffer_events
         autocmd! * <buffer>
-        autocmd CursorHold <buffer> call neolsc#ui#textDocument#documentHighlight()
+        autocmd CursorHold <buffer> call s:on_cursor_hold()
         autocmd CursorMoved <buffer> call s:on_cursor_moved()
         autocmd InsertEnter <buffer> call s:on_insert_enter()
         autocmd InsertLeave <buffer> call s:on_insert_leave()
         autocmd CursorMovedI <buffer> call s:on_cursor_moved_i()
-        " autocmd TextChangedI <buffer> call s:on_text_chande_i()
+        autocmd TextChangedI <buffer> call s:on_text_chande_i()
         autocmd BufWipeout <buffer> call neolsc#ui#textDocumentSynchronization#didClose()
         autocmd TextChanged <buffer> call neolsc#ui#textDocumentSynchronization#didChange()
         autocmd BufWritePost <buffer> call neolsc#ui#textDocumentSynchronization#didSave()
     augroup end
-
 endfunction
 
 function! s:on_text_chande_i() abort
 endfunction
 
 function! s:on_cursor_moved_i() abort
+endfunction
+
+function! s:on_cursor_hold() abort
+    let l:current_pos = getcurpos()[1:2]
+    if !exists('s:last_pos') || l:current_pos != s:last_pos
+        call neolsc#ui#textDocument#documentHighlight()
+    endif
 endfunction
 
 function! s:on_cursor_moved() abort
