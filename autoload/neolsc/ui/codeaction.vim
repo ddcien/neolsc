@@ -37,19 +37,17 @@ function! s:_codeAction_apply(server, action) abort
 endfunction
 
 function! neolsc#ui#codeaction#apply(server, actions, fixit_if_one)
-    if len(a:actions) == 1
-        if a:fixit_if_one
-            call s:_codeAction_apply(a:server, a:actions[0])
-            return
-        endif
-        let l:base = 1
-        let l:actlist = []
-    else
-        let l:base = 2
-        let l:actlist = ['1. FIX ALL !!!']
+    if empty(a:actions)
+        return
     endif
 
-    let l:idx = l:base
+    if len(a:actions) == 1 && a:fixit_if_one
+        call s:_codeAction_apply(a:server, a:actions[0])
+        return
+    endif
+
+    let l:actlist = []
+    let l:idx = 1
 
     for l:action in a:actions
         call add(l:actlist, printf('%d. %s', l:idx, l:action['title']))
@@ -61,12 +59,7 @@ function! neolsc#ui#codeaction#apply(server, actions, fixit_if_one)
         return
     endif
 
-
-    if l:idx == 1 && len(l:actlist) > 1
-        " TODO(Richard): FIX ALL
-    else
-        call s:_codeAction_apply(a:server, a:actions[l:idx - l:base])
-    endif
+    call s:_codeAction_apply(a:server, a:actions[l:idx - 1])
 endfunction
 
 
