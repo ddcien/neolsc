@@ -18,7 +18,7 @@ class Neolsc():
 
     @pynvim.rpc_export('neolsc_monitor_start')
     def _neolsc_monitor_start(self, buf):
-        self._context[buf] = { 'valid': False, 'lines': [] }
+        self._context[buf] = {'valid': False, 'lines': []}
         self._nvim.request('nvim_buf_attach', buf, True, {})
         self._debug('start monitoring {}: {}'.format(buf, self._context))
 
@@ -49,7 +49,8 @@ class Neolsc():
 
         buf_ctx['lines'] = head + linedata + tail
 
-        assert([line.decode() for line in buf.api.get_lines(0, -1, True)] == buf_ctx['lines'])
+        assert([line.decode() for line in buf.api.get_lines(0, -1, True)]
+               == buf_ctx['lines'])
 
         change_event = {
             'text': '\n'.join(linedata) + '\n',
@@ -64,18 +65,21 @@ class Neolsc():
             buf_ctx['events'] = buf_ctx.get('events', []) + [change_event]
             return
 
+        # buffering all events for a while,
+        # merge the events
         # doit(buf_ctx.pop('events'))
 
     @pynvim.rpc_export('nvim_buf_changedtick_event')
     def _on_buf_changedtick_event(self, *args):
         buf, changedtick = args
-        self._debug('nvim_buf_changedtick_event:[{}, {}]'.format(buf, changedtick))
+        self._debug(
+            'nvim_buf_changedtick_event:[{}, {}]'.format(buf, changedtick))
         return
 
     @pynvim.rpc_export('nvim_buf_detach_event')
     def _on_nvim_buf_detach_event(self, *args):
-        self._context.pop(buf.number)
         buf = args[0]
+        self._context.pop(buf.number)
         self._debug('nvim_buf_detach_event:[{}]'.format(buf))
         return
 
