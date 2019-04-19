@@ -111,14 +111,14 @@ endfunction
 function! neolsc#ui#completion#completion_handler(server, response)
     let l:CompletionList = get(a:response, 'result')
     if empty(l:CompletionList)
-        return
+        return [-1, []]
     endif
     if type(l:CompletionList) == v:t_list
         let l:CompletionList = {'isIncomplete': v:false, 'items': l:CompletionList}
     endif
     let l:items = get(l:CompletionList, 'items')
     if empty(l:items)
-        return
+        return [-1, []]
     endif
 
     let l:result = []
@@ -147,6 +147,9 @@ endfunction
 
 function! s:_on_omni(server, response) abort
     let [l:start, l:result] = neolsc#ui#completion#completion_handler(a:server, a:response)
+    if empty(l:result)
+        return
+    endif
     call complete(l:start, l:result)
 endfunction
 

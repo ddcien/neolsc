@@ -50,6 +50,9 @@ endfunction
 " completion {{{
 function! neolsc#ui#textDocument#completion_handler(server, response, buf)
     let [l:start, l:result] = neolsc#ui#completion#completion_handler(a:server, a:response)
+    if empty(l:result)
+        return
+    endif
     call complete(l:start, l:result)
 endfunction
 
