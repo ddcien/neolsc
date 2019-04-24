@@ -22,7 +22,7 @@ function! neolsc#ui#diagnostics#publishDiagnostics_handler(server, notification)
     endfor
 
     call neolsc#ui#vtext#diagnostics_clear_all(l:buf_ctx)
-    call neolsc#ui#highlight#diagnostics_show(l:buf)
+    " call neolsc#ui#highlight#diagnostics_show(l:buf)
 endfunction
 
 function! s:lsp_dia_to_vim_location(buf, diag) abort
