@@ -100,11 +100,11 @@ function! s:build_complete_item(item) abort
                 \ 'kind' : get(s:CompletionItemKind, get(a:item, 'kind')),
                 \ 'icase': 1,
                 \ 'dup': 1,
-                \ 'empty': 0
+                \ 'empty': 0,
                 \ }
     let l:word_snippet = s:CompletionItem_get_word_snippet(a:item)
     let l:ret['word'] = l:word_snippet[0]
-    let l:ret['user_data'] = json_encode(l:word_snippet)
+    " let l:ret['user_data'] = json_encode(l:word_snippet)
     return l:ret
 endfunction
 
