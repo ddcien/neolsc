@@ -75,10 +75,14 @@ function! s:handle_textedit(buf, edit) abort
     let l:new_text = a:edit.newText
 
     let l:line_start = l:range['start']['line']
-    let l:line_end = l:range['end']['line'] + 1
+    let l:line_end = l:range['end']['line']
 
     let l:col_start = l:range['start']['character']
     let l:col_end = l:range['end']['character']
+
+    if l:col_end > 0
+        let l:line_end += 1
+    endif
 
     let l:o_lines = nvim_buf_get_lines(a:buf, l:line_start, l:line_end, v:true)
 
