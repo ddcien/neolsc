@@ -7,7 +7,7 @@ let s:TextDocumentSaveReason = {
             \ '3': 'FocusOut',
             \ }
 
-function! s:_build_DocumentUri(buf)
+function! s:_build_DocumentUri(buf) abort
     return neolsc#utils#uri#buf_to_uri(a:buf)
 endfunction
 
@@ -25,7 +25,7 @@ function! s:_build_TextDocumentItem(buf) abort
                 \ }
 endfunction
 
-function! s:_build_VersionedTextDocumentIdentifier(buf)
+function! s:_build_VersionedTextDocumentIdentifier(buf) abort
     let l:buf_ctx = neolsc#ui#workfile#get(a:buf)
     let l:ret = s:_build_TextDocumentIdentifier(a:buf)
     let l:ret['version'] = l:buf_ctx['_version']

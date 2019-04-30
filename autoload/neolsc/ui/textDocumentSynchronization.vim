@@ -6,70 +6,16 @@ function! neolsc#ui#textDocumentSynchronization#didOpen() abort
     call neolsc#lsp#textDocumentSynchronization#didOpen(l:server, l:buf)
 endfunction
 
-function! s:_first(old, new)
-    let l:l_old = len(a:old)
-    let l:l_new = len(a:new)
-
-    for l:lnum in range(0, l:l_old -1, 1)
-        if l:lnum >= l:l_new ||  a:old[l:lnum] !=# a:new[l:lnum]
-            return l:lnum
-        endif
-    endfor
-
-    return l:lnum + 1
-endfunction
-
-function! s:_last(old, new, first_line)
-    let l:l_old = len(a:old) - a:first_line
-    let l:l_new = len(a:new)
-
-    for l:lnum in range(-1, -l:l_old, -1)
-        if l:lnum < -l:l_new ||  a:old[l:lnum] !=# a:new[l:lnum]
-            return l:lnum
-        endif
-    endfor
-    return l:lnum - 1
-endfunction
-
-function! s:_diff(old, new)
-    let l:first_line = s:_first(a:old, a:new)
-    let l:last_line = s:_last(a:old, a:new, l:first_line)
-    let l:last_line_old = len(a:old) + l:last_line
-    let l:last_line_new = len(a:new) + l:last_line
-
-    let l:length = 0
-    let l:text = ''
-
-    for l:idx in range(l:first_line, l:last_line_old)
-        let l:length += len(a:old[l:idx]) + 1
-    endfor
-    for l:idx in range(l:first_line, l:last_line_new)
-        let l:text .= a:new[l:idx] . "\n"
-    endfor
-
-    return {
-                \ 'text': l:text,
-                \ 'rangeLength': l:length,
-                \ 'range': {
-                \     'start': {'line': l:first_line, 'character': 0},
-                \     'end': {'line': l:last_line_old + 1, 'character': 0}
-                \ }
-                \ }
-endfunction
-
-function! s:_build_TextDocumentContentChangeEvent(sync_kind, old, new)
+function! s:_build_TextDocumentContentChangeEvent(sync_kind, old, new) abort
     if a:sync_kind == 0
         return v:null
     endif
     if a:sync_kind == 1
-        return [{'text': join(a:new, "\n")}]
+        return [{'text': join(a:new, "\n") . "\n"}]
     endif
     if a:sync_kind == 2
-        try
-            return [s:_diff(a:old, a:new)]
-        catch
-            return [{'text': join(a:new, "\n")}]
-        endtry
+        " TODO(Richard):
+        return [{'text': join(a:new, "\n") . "\n"}]
     endif
 endfunction
 
