@@ -60,7 +60,7 @@ endfunction
 " }}}
 
 " {{{
-function! neolsc#ui#location#to_location_list(lsp_location_list, sort)
+function! neolsc#ui#location#to_location_list(lsp_location_list, sort) abort
     let l:location_list = []
     for l:lsp_location in a:lsp_location_list
         call add(l:location_list, s:lsp_location_to_vim_location(l:lsp_location))
@@ -79,26 +79,24 @@ function! s:jump_to_location(loc) abort
 endfunction
 
 
-function! neolsc#ui#location#show(prompt, location_list, jump_if_one)
+function! neolsc#ui#location#show(prompt, location_list, jump_if_one) abort
     call setloclist(0, a:location_list)
     if a:jump_if_one && len(a:location_list) == 1
         ll! 1
         return
     endif
-    lopen
-
-    " let l:fzf_entries = []
-    " let l:idx = 1
-    " for l:location in a:location_list
-        " call add(l:fzf_entries,
-                    " \ printf('%d. %s | %d | %d | %s', l:idx, l:location['filename'], l:location['lnum'], l:location['col'], l:location['text'])
-                    " \ )
-        " let l:idx += 1
-    " endfor
-    " call fzf#run(fzf#wrap({
-                " \ 'source': l:fzf_entries,
-                " \ 'sink': function('s:jump_to_location'),
-                " \ 'options': '--reverse +m --prompt="Jomp> "'
-                " \ }))
+    let l:fzf_entries = []
+    let l:idx = 1
+    for l:location in a:location_list
+        call add(l:fzf_entries,
+                    \ printf('%d. %s | %d col %d | %s', l:idx, l:location['filename'], l:location['lnum'], l:location['col'], l:location['text'])
+                    \ )
+        let l:idx += 1
+    endfor
+    call fzf#run(fzf#wrap({
+                \ 'source': l:fzf_entries,
+                \ 'sink': function('s:jump_to_location'),
+                \ 'options': printf('--reverse --prompt="%s> "', a:prompt)
+                \ }))
 endfunction
 " }}}
