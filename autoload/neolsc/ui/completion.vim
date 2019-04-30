@@ -1,17 +1,11 @@
 " vim: set foldmethod=marker foldlevel=0 nomodeline:
 
 " omni {{{
-function! s:_get_current_character() abort
-    let l:line = nvim_get_current_line()
-    if empty(l:line)
-        return
-    endif
-    if mode() ==# 'i'
-        let l:char = l:line[col('.') - 2]
-    else
-        let l:char = l:line[col('.') - 1]
-    endif
-    return l:char
+function! s:_get_typed() abort
+    let l:curpos = getcurpos()
+    let l:bcol = l:curpos[2]
+    let l:typed = strpart(getline('.'), 0, l:bcol - 1)
+    return l:typed
 endfunction
 
 function! s:_get_current_position() abort
@@ -92,8 +86,18 @@ function! s:CompletionItem_get_word_snippet(item) abort
     return [l:word, l:snippet]
 endfunction
 
-function! s:build_complete_item(item) abort
+function! s:CompletionItem_get_word(item) abort
+    if has_key(a:item, 'textEdit')
+        return a:item['textEdit']['newText']
+    elseif has_key(a:item, 'insertText')
+        return a:item['insertText']
+    endif
+endfunction
+
+function! s:build_complete_item(item, typed) abort
     let l:ret = {
+                \ 'neolsc_start': s:_get_start(a:item, a:typed),
+                \ 'word': s:CompletionItem_get_word(a:item),
                 \ 'menu': s:CompletionItem_get_menu(a:item),
                 \ 'info': s:CompletionItem_get_info(a:item),
                 \ 'abbr': get(a:item, 'filterText', a:item['label']),
@@ -102,13 +106,35 @@ function! s:build_complete_item(item) abort
                 \ 'dup': 1,
                 \ 'empty': 0,
                 \ }
-    let l:word_snippet = s:CompletionItem_get_word_snippet(a:item)
-    let l:ret['word'] = l:word_snippet[0]
-    " let l:ret['user_data'] = json_encode(l:word_snippet)
     return l:ret
 endfunction
 
-function! neolsc#ui#completion#completion_handler(server, response)
+
+function! s:_get_start(item, typed) abort
+    if has_key(a:item, 'textEdit')
+        return a:item['textEdit']['range']['start']['character']
+    endif
+
+    let l:insert = get(a:item, 'insertText')
+    let l:len_typed = len(a:typed)
+    let l:len_insert = len(l:insert)
+    let l:count = min([l:len_typed, l:len_insert])
+
+    if l:count < 0
+        return 0
+    endif
+
+    while l:count >= 0
+        let l:a = strpart(l:insert, 0, l:count)
+        let l:b = strpart(a:typed, l:len_typed - l:count, l:count)
+        if l:a ==# l:b
+            return l:len_typed - l:count
+        endif
+        let l:count -= 1
+    endwhile
+endfunction
+
+function! neolsc#ui#completion#completion_handler(server, typed, response)
     let l:CompletionList = get(a:response, 'result')
     if empty(l:CompletionList)
         return [-1, []]
@@ -122,31 +148,28 @@ function! neolsc#ui#completion#completion_handler(server, response)
     endif
 
     let l:result = []
-    let l:start = l:items[0]['textEdit']['range']['start']['character']
 
+    let l:start = len(a:typed)
     for l:item in l:items
-        if l:item['textEdit']['range']['start']['character'] < l:start
-            let l:start = l:item['textEdit']['range']['start']['character']
+        let l:_item = s:build_complete_item(l:item, a:typed)
+        if l:_item['neolsc_start'] < l:start
+            let l:start = l:_item['neolsc_start']
         endif
-        call add(l:result, s:build_complete_item(l:item))
+        call add(l:result, l:_item)
     endfor
 
-    let l:idx = 0
-    let l:line = nvim_get_current_line()
-    while l:idx < len(l:result)
-        let l:ls_start = l:items[l:idx]['textEdit']['range']['start']['character']
-        let l:cp_item = l:result[l:idx]
-        if l:ls_start > l:start
-            let l:cp_item['word']  = l:line[: l:start - 1] . l:line[l:start : l:ls_start - 1] . l:cp_item['word']
+    for l:item in l:result
+        if l:item['neolsc_start'] > l:start
+            let l:item['word'] = strpart(a:typed, l:start, l:item['neolsc_start'] - l:start) . l:item['word']
         endif
-        let l:idx += 1
-    endwhile
+        call remove(l:item, 'neolsc_start')
+    endfor
 
     return [l:start + 1, l:result]
 endfunction
 
-function! s:_on_omni(server, response) abort
-    let [l:start, l:result] = neolsc#ui#completion#completion_handler(a:server, a:response)
+function! s:_on_omni(server, typed, response) abort
+    let [l:start, l:result] = neolsc#ui#completion#completion_handler(a:server, a:typed, a:response)
     if empty(l:result)
         return
     endif
@@ -167,7 +190,9 @@ function! neolsc#ui#completion#omni(findstart, base) abort
         return
     endif
 
-    let l:char = s:_get_current_character()
+    let l:typed = s:_get_typed()
+    let l:char = strcharpart(l:typed, strchars(l:typed) - 1, 1)
+
     if index(l:server.capabilities_completion_triggerCharacters(), l:char) >= 0
         let l:context = {'triggerKind': 2, 'triggerCharacter': l:char}
     else
@@ -186,7 +211,7 @@ function! neolsc#ui#completion#omni(findstart, base) abort
                 \ }
                 \ }
     call neolsc#ui#textDocumentSynchronization#didChangeBuf(l:buf)
-    call l:server.send_request(l:request, {server, response -> s:_on_omni(server, response)})
+    call l:server.send_request(l:request, {server, response -> s:_on_omni(server, l:typed, response)})
 
     redraws
     return []
