@@ -89,10 +89,14 @@ function! s:handle_textedit(buf, edit) abort
     if l:col_start == 0
         let l:head = ''
     else
-        let l:head = l:o_lines[0][:l:col_start - 1]
+        let l:head = l:o_lines[0][: l:col_start - 1]
+    endif
+    if l:col_end == 0
+        let l:tail = ''
+    else
+        let l:tail = l:o_lines[-1][l:col_end :]
     endif
 
-    let l:tail = l:o_lines[-1][l:col_end :]
     let l:n_lines = split(l:new_text, "\n", 1)
     let l:n_lines[0] = l:head . l:n_lines[0]
     let l:n_lines[-1] = l:n_lines[-1] . l:tail
@@ -161,7 +165,7 @@ function! neolsc#ui#edit#WorkspaceEdit(buf, workspaceedit) abort
     endif
 
     if a:buf !=# bufnr('%')
-        execute 'keepjumps keepalt b ' . a:buf
+        execute 'keepjumps keepalt silent b ' . a:buf
     endif
     call winrestview(l:cur_view)
 endfunction
