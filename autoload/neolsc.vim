@@ -40,18 +40,10 @@ function! s:on_text_document_did_open() abort
         autocmd CursorMoved <buffer> call s:on_cursor_moved()
         autocmd InsertEnter <buffer> call s:on_insert_enter()
         autocmd InsertLeave <buffer> call s:on_insert_leave()
-        autocmd CursorMovedI <buffer> call s:on_cursor_moved_i()
-        autocmd TextChangedI <buffer> call s:on_text_chande_i()
         autocmd BufWipeout <buffer> call neolsc#ui#textDocumentSynchronization#didClose()
         autocmd TextChanged <buffer> call neolsc#ui#textDocumentSynchronization#didChange()
         autocmd BufWritePost <buffer> call neolsc#ui#textDocumentSynchronization#didSave()
     augroup end
-endfunction
-
-function! s:on_text_chande_i() abort
-endfunction
-
-function! s:on_cursor_moved_i() abort
 endfunction
 
 function! s:on_cursor_hold() abort
@@ -73,18 +65,26 @@ endfunction
 
 function! s:on_insert_enter() abort
     let l:ctx = neolsc#ui#workfile#get(bufnr('%'))
+    if empty(l:ctx)
+        return
+    endif
     call neolsc#ui#vtext#diagnostics_clear_all(l:ctx)
 endfunction
 
 function! s:on_insert_leave() abort
     let l:ctx = neolsc#ui#workfile#get(bufnr('%'))
+    if empty(l:ctx)
+        return
+    endif
     call neolsc#ui#textDocumentSynchronization#didChange()
     call neolsc#ui#vtext#diagnostics_show_line(l:ctx, line('.') - 1)
 endfunction
 
 function! s:echo_diagnostics_under_cursor(...) abort
     let l:ctx = neolsc#ui#workfile#get(bufnr('%'))
-
+    if empty(l:ctx)
+        return
+    endif
     call neolsc#ui#hover#clear()
     call neolsc#ui#vtext#diagnostics_clear_all(l:ctx)
     call neolsc#ui#vtext#diagnostics_show_line(l:ctx, line('.') - 1)
@@ -97,30 +97,7 @@ function! s:stop_cursor_moved_timer() abort
     endif
 endfunction
 
-
-function! s:_get_current_character() abort
-    let l:line = nvim_get_current_line()
-    if empty(l:line)
-        return
-    endif
-    if mode() ==# 'i'
-        let l:char = l:line[col('.') - 2]
-    else
-        let l:char = l:line[col('.') - 1]
-    endif
-    return l:char
-endfunction
-
-function! s:_text_changed_i() abort
-    " let l:buf = nvim_get_current_buf()
-    " let l:server = neolsc#ui#general#buf_to_server(l:buf)
-    " let l:char = s:_get_current_character()
-    " if index(l:server.capabilities_signatureHelp_triggerCharacters(), l:char) < 0
-        " return
-    " endif
-    " call neolsc#ui#textDocument#signatureHelp()
-endfunction
-
+" public {{{
 function! neolsc#global_init() abort
     if s:_neolsc_global_init
         return
@@ -151,11 +128,9 @@ function! neolsc#global_init() abort
         autocmd BufReadPost * call s:on_text_document_did_open()
     augroup end
 
-    call _neolsc_init()
     let s:_neolsc_global_init = 1
 endfunction
 
-" public {{{
 function! neolsc#start() abort
     call neolsc#global_init()
 endfunction
