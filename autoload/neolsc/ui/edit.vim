@@ -73,24 +73,26 @@ function! s:handle_textedit(buf, edit) abort
     let l:range = a:edit.range
     let l:new_text = a:edit.newText
     let l:line_start = l:range['start']['line']
-    let l:line_end = l:range['end']['line'] + 1
+    let l:line_end = l:range['end']['line']
     let l:col_start = l:range['start']['character']
     let l:col_end = l:range['end']['character']
 
-    let l:o_lines = nvim_buf_get_lines(a:buf, l:line_start, l:line_end, v:true)
+    let l:head = ''
+    let l:tail = ''
 
-    if l:col_start == 0
-        let l:head = ''
-    else
-        let l:head = l:o_lines[0][: l:col_start - 1]
+    if l:col_start > 0
+        let l:head = nvim_buf_get_lines(a:buf, l:line_start, l:line_start + 1, v:true)[0][: l:col_start - 1]
     endif
 
-    let l:tail = l:o_lines[-1][l:col_end :]
+    let l:tail_lines = nvim_buf_get_lines(a:buf, l:line_end, l:line_end + 1, v:false)
+    if !empty(l:tail_lines)
+        let l:tail = l:tail_lines[0][l:col_end :]
+    endif
 
-    let l:n_lines = split(l:new_text, "\n", 1)
+    let l:n_lines = split(l:new_text, "\n", v:true)
     let l:n_lines[0] = l:head . l:n_lines[0]
     let l:n_lines[-1] = l:n_lines[-1] . l:tail
-    call nvim_buf_set_lines(a:buf, l:line_start, l:line_end, v:true, l:n_lines)
+    call nvim_buf_set_lines(a:buf, l:line_start, l:line_end + 1, v:false, l:n_lines)
 endfunction
 
 function! s:handle_changes(changes) abort
