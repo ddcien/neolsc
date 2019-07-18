@@ -69,20 +69,13 @@ function! s:handle_DeleteFile(DeleteFile) abort
     return
 endfunction
 
-
 function! s:handle_textedit(buf, edit) abort
     let l:range = a:edit.range
     let l:new_text = a:edit.newText
-
     let l:line_start = l:range['start']['line']
-    let l:line_end = l:range['end']['line']
-
+    let l:line_end = l:range['end']['line'] + 1
     let l:col_start = l:range['start']['character']
     let l:col_end = l:range['end']['character']
-
-    if l:col_end > 0
-        let l:line_end += 1
-    endif
 
     let l:o_lines = nvim_buf_get_lines(a:buf, l:line_start, l:line_end, v:true)
 
@@ -91,16 +84,12 @@ function! s:handle_textedit(buf, edit) abort
     else
         let l:head = l:o_lines[0][: l:col_start - 1]
     endif
-    if l:col_end == 0
-        let l:tail = ''
-    else
-        let l:tail = l:o_lines[-1][l:col_end :]
-    endif
+
+    let l:tail = l:o_lines[-1][l:col_end :]
 
     let l:n_lines = split(l:new_text, "\n", 1)
     let l:n_lines[0] = l:head . l:n_lines[0]
     let l:n_lines[-1] = l:n_lines[-1] . l:tail
-
     call nvim_buf_set_lines(a:buf, l:line_start, l:line_end, v:true, l:n_lines)
 endfunction
 
