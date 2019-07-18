@@ -39,7 +39,7 @@
       "completion": {
         "dynamicRegistration": true,
         "completionItem": {
-          "snippetSupport": true,
+          "snippetSupport": false,
           "commitCharactersSupport": true,
           "documentationFormat": ["plaintext", "markdown"],
           "deprecatedSupport": true,
